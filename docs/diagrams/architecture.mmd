@@ -1,0 +1,11 @@
+flowchart LR
+  Human[Human user] --> UI[React / React Flow]
+  Agent[Embedded Agent-Native agent] --> Actions[defineAction shared actions]
+  UI --> Actions
+  UI <--> AppState[Application state: selected node / route]
+  AppState --> Agent
+  Actions --> Domain[Authorized domain functions]
+  Domain --> Sim[Pure deterministic graph simulator]
+  Domain --> Runbook[Runbook builder]
+  Domain --> DB[(PostgreSQL / Drizzle)]
+  Sim --> Domain

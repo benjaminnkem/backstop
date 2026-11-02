@@ -1,0 +1,12 @@
+erDiagram
+  WORKSPACE ||--o{ RESOURCE : owns
+  WORKSPACE ||--o{ SIMULATION_RUN : owns
+  RESOURCE ||--o{ RESOURCE_CAPABILITY : exposes
+  RESOURCE ||--o{ DEPENDENCY_GROUP : targets
+  DEPENDENCY_GROUP ||--o{ DEPENDENCY_LINK : contains
+  RESOURCE ||--o{ DEPENDENCY_LINK : prerequisite
+  SIMULATION_RUN ||--o{ SIMULATION_IMPACT : produces
+  RESOURCE ||--o{ SIMULATION_IMPACT : evaluated
+  RESOURCE ||--o{ RECOVERY_TEST : tested
+  RESOURCE ||--o{ REMEDIATION_TASK : relates
+  WORKSPACE ||--o{ REMEDIATION_TASK : owns

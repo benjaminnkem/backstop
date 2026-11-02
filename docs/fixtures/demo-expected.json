@@ -1,0 +1,34 @@
+{
+  "before": {
+    "failure": "admin-phone/access",
+    "blockedAccess": [
+      "admin-phone",
+      "workspace-email",
+      "code-host",
+      "cloud-host",
+      "password-vault"
+    ],
+    "survivingAccess": [
+      "backup-key",
+      "domain-registrar",
+      "backup-admin"
+    ],
+    "warning": "recovery cycle is a warning, not proof of lockout"
+  },
+  "after": {
+    "change": "Add alternative independent hardware-key dependency group for workspace-email/access",
+    "blockedAccess": [
+      "admin-phone"
+    ],
+    "survivingAccess": [
+      "workspace-email",
+      "code-host",
+      "cloud-host",
+      "password-vault",
+      "domain-registrar",
+      "backup-key",
+      "backup-admin"
+    ]
+  },
+  "note": "Expected results assume exactly the fictional graph in northstar-studio.json and verified confidence. Test actual engine results and adjust fixtures if deliberate model decisions change."
+}

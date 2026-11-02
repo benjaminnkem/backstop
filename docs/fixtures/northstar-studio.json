@@ -1,0 +1,262 @@
+{
+  "workspace": {
+    "id": "northstar",
+    "name": "Northstar Studio",
+    "fictional": true
+  },
+  "resources": [
+    {
+      "id": "admin-phone",
+      "name": "Primary administrator phone",
+      "kind": "device",
+      "criticality": "high",
+      "owner": "Administrator"
+    },
+    {
+      "id": "backup-key",
+      "name": "Backup hardware key",
+      "kind": "recovery_method",
+      "criticality": "high",
+      "owner": "Backup administrator"
+    },
+    {
+      "id": "workspace-email",
+      "name": "Workspace email",
+      "kind": "email",
+      "criticality": "critical",
+      "owner": "IT lead"
+    },
+    {
+      "id": "code-host",
+      "name": "Code repository",
+      "kind": "service",
+      "criticality": "critical",
+      "owner": "Engineering"
+    },
+    {
+      "id": "cloud-host",
+      "name": "Cloud infrastructure",
+      "kind": "service",
+      "criticality": "critical",
+      "owner": "Engineering"
+    },
+    {
+      "id": "domain-registrar",
+      "name": "Domain registrar",
+      "kind": "service",
+      "criticality": "critical",
+      "owner": "Operations"
+    },
+    {
+      "id": "password-vault",
+      "name": "Password vault",
+      "kind": "credential_vault",
+      "criticality": "critical",
+      "owner": "IT lead"
+    },
+    {
+      "id": "backup-admin",
+      "name": "Secondary administrator",
+      "kind": "account",
+      "criticality": "high",
+      "owner": "Operations"
+    }
+  ],
+  "capabilities": [
+    {
+      "resourceId": "admin-phone",
+      "capability": "access",
+      "mode": "independent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "backup-key",
+      "capability": "access",
+      "mode": "independent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "backup-admin",
+      "capability": "access",
+      "mode": "independent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "workspace-email",
+      "capability": "access",
+      "mode": "dependent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "workspace-email",
+      "capability": "recovery",
+      "mode": "dependent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "code-host",
+      "capability": "access",
+      "mode": "dependent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "cloud-host",
+      "capability": "access",
+      "mode": "dependent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "domain-registrar",
+      "capability": "access",
+      "mode": "dependent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "password-vault",
+      "capability": "access",
+      "mode": "dependent",
+      "confidence": "verified"
+    },
+    {
+      "resourceId": "password-vault",
+      "capability": "recovery",
+      "mode": "dependent",
+      "confidence": "verified"
+    }
+  ],
+  "groups": [
+    {
+      "id": "email-access-phone",
+      "resourceId": "workspace-email",
+      "capability": "access",
+      "requirementMode": "ALL",
+      "label": "Normal login using administrator phone"
+    },
+    {
+      "id": "code-email",
+      "resourceId": "code-host",
+      "capability": "access",
+      "requirementMode": "ALL",
+      "label": "Code hosting uses workspace identity"
+    },
+    {
+      "id": "cloud-email",
+      "resourceId": "cloud-host",
+      "capability": "access",
+      "requirementMode": "ALL",
+      "label": "Cloud admin login uses workspace identity"
+    },
+    {
+      "id": "domain-mfa-alternatives",
+      "resourceId": "domain-registrar",
+      "capability": "access",
+      "requirementMode": "ANY",
+      "label": "Phone or independently held hardware key"
+    },
+    {
+      "id": "vault-email",
+      "resourceId": "password-vault",
+      "capability": "access",
+      "requirementMode": "ALL",
+      "label": "Vault login depends on company email"
+    },
+    {
+      "id": "email-recovery-vault",
+      "resourceId": "workspace-email",
+      "capability": "recovery",
+      "requirementMode": "ALL",
+      "label": "Recovery material in vault"
+    },
+    {
+      "id": "vault-recovery-email",
+      "resourceId": "password-vault",
+      "capability": "recovery",
+      "requirementMode": "ALL",
+      "label": "Vault recovery depends on email recovery"
+    }
+  ],
+  "links": [
+    {
+      "id": "l1",
+      "groupId": "email-access-phone",
+      "prerequisiteResourceId": "admin-phone",
+      "prerequisiteCapability": "access",
+      "confidence": "verified"
+    },
+    {
+      "id": "l2",
+      "groupId": "code-email",
+      "prerequisiteResourceId": "workspace-email",
+      "prerequisiteCapability": "access",
+      "confidence": "verified"
+    },
+    {
+      "id": "l3",
+      "groupId": "cloud-email",
+      "prerequisiteResourceId": "workspace-email",
+      "prerequisiteCapability": "access",
+      "confidence": "verified"
+    },
+    {
+      "id": "l4",
+      "groupId": "domain-mfa-alternatives",
+      "prerequisiteResourceId": "admin-phone",
+      "prerequisiteCapability": "access",
+      "confidence": "verified"
+    },
+    {
+      "id": "l5",
+      "groupId": "domain-mfa-alternatives",
+      "prerequisiteResourceId": "backup-key",
+      "prerequisiteCapability": "access",
+      "confidence": "verified"
+    },
+    {
+      "id": "l6",
+      "groupId": "vault-email",
+      "prerequisiteResourceId": "workspace-email",
+      "prerequisiteCapability": "access",
+      "confidence": "verified"
+    },
+    {
+      "id": "l7",
+      "groupId": "email-recovery-vault",
+      "prerequisiteResourceId": "password-vault",
+      "prerequisiteCapability": "recovery",
+      "confidence": "verified"
+    },
+    {
+      "id": "l8",
+      "groupId": "vault-recovery-email",
+      "prerequisiteResourceId": "workspace-email",
+      "prerequisiteCapability": "recovery",
+      "confidence": "verified"
+    }
+  ],
+  "demoScenario": {
+    "name": "Primary administrator loses phone",
+    "failed": [
+      {
+        "resourceId": "admin-phone",
+        "capability": "access"
+      }
+    ]
+  },
+  "demoImprovement": {
+    "action": "add second dependency group",
+    "resourceId": "workspace-email",
+    "capability": "access",
+    "group": {
+      "id": "email-key-route",
+      "requirementMode": "ALL",
+      "label": "Independently configured hardware key"
+    },
+    "link": {
+      "id": "l9",
+      "prerequisiteResourceId": "backup-key",
+      "prerequisiteCapability": "access",
+      "confidence": "verified"
+    }
+  },
+  "disclaimer": "Synthetic sample. These are not statements about real provider default configurations."
+}
