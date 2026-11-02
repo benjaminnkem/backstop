@@ -20,6 +20,7 @@ export interface NavigationState {
   threadId?: string;
   workspaceId?: string;
   selectedResourceId?: string;
+  simulationId?: string;
 }
 
 export function useNavigationState() {
@@ -72,6 +73,7 @@ export function navigationStateForPath(
   const threadId = threadIdFromPath(pathname);
   const workspaceId = searchParams?.get("workspace") ?? undefined;
   const selectedResourceId = searchParams?.get("resource") ?? undefined;
+  const simulationId = searchParams?.get("simulation") ?? undefined;
   return {
     view: viewForPath(pathname),
     path: pathname,
@@ -79,6 +81,7 @@ export function navigationStateForPath(
     ...(threadId ? { threadId } : {}),
     ...(workspaceId ? { workspaceId } : {}),
     ...(selectedResourceId ? { selectedResourceId } : {}),
+    ...(simulationId ? { simulationId } : {}),
   };
 }
 
@@ -135,6 +138,9 @@ export function pathForCommand(command: any): string {
       command.selectedResourceId
     ) {
       params.set("resource", command.selectedResourceId);
+    }
+    if (typeof command.simulationId === "string" && command.simulationId) {
+      params.set("simulation", command.simulationId);
     }
     const query = params.toString();
     return query ? `${path}?${query}` : path;

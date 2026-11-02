@@ -22,6 +22,10 @@ export default defineAction({
       .string()
       .optional()
       .describe("Selected recovery resource id when view is map"),
+    simulationId: z
+      .string()
+      .optional()
+      .describe("Saved simulation id when view is map"),
   }),
   http: false,
   run: async (args) => {
@@ -34,6 +38,7 @@ export default defineAction({
     if (args.threadId) nav.threadId = args.threadId;
     if (args.workspaceId) nav.workspaceId = args.workspaceId;
     if (args.selectedResourceId) nav.selectedResourceId = args.selectedResourceId;
+    if (args.simulationId) nav.simulationId = args.simulationId;
     nav._writeId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     await writeAppStateForCurrentTab("navigate", nav);
     return `Navigating to ${args.view || args.path}`;

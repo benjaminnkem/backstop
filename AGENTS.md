@@ -40,10 +40,14 @@ Manual mapping only. Do not add provider OAuth, store credentials, or say a simu
 
 One Northstar sample exists per team (`org:<id>` or `user:<email>`). `seed-northstar` is idempotent. Domain tables are `recovery_*` because the framework already owns `resources`.
 
-`navigation.view` is `map` on `/map`. `navigation.workspaceId` and `navigation.selectedResourceId` come from `workspace` and `resource` query params.
+`navigation.view` is `map` on `/map`. `navigation.workspaceId`, `navigation.selectedResourceId`, and `navigation.simulationId` come from the `workspace`, `resource`, and `simulation` query params.
+
+Simulation status is per capability. `blocked` means every recorded route is blocked. A recovery cycle is a warning, not a lockout. `recovery: available` does not make `access` available.
 
 | Action | Purpose |
 | --- | --- |
 | `get-workspace-map` | Read one workspace graph. Optional `workspaceId`. |
 | `seed-northstar` | Import the fictional Northstar Studio graph once. |
-| `navigate` | Open `map` with optional `workspaceId` and `selectedResourceId`. |
+| `run-simulation` | Persist a deterministic failure run. `failed` accepts resource ids or slugs. |
+| `get-simulation` | Read one saved run, or the latest run when `simulationId` is omitted. |
+| `navigate` | Open `map` with optional `workspaceId`, `selectedResourceId`, and `simulationId`. |

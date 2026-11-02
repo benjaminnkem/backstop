@@ -12,6 +12,11 @@ export const capabilityModeSchema = z.enum([
   "unknown",
 ]);
 export const requirementModeSchema = z.enum(["ALL", "ANY"]);
+
+export type Capability = z.infer<typeof capabilitySchema>;
+export type Confidence = z.infer<typeof confidenceSchema>;
+export type CapabilityMode = z.infer<typeof capabilityModeSchema>;
+export type RequirementMode = z.infer<typeof requirementModeSchema>;
 export const resourceKindSchema = z.enum([
   "service",
   "identity_provider",
@@ -79,6 +84,37 @@ export const northstarFixtureSchema = z.object({
       confidence: confidenceSchema,
     }),
   ),
+  demoScenario: z
+    .object({
+      name: textField,
+      failed: z
+        .array(
+          z.object({
+            resourceId: textField,
+            capability: capabilitySchema,
+          }),
+        )
+        .min(1),
+    })
+    .optional(),
+  demoImprovement: z
+    .object({
+      action: z.string(),
+      resourceId: textField,
+      capability: capabilitySchema,
+      group: z.object({
+        id: textField,
+        requirementMode: requirementModeSchema,
+        label: textField,
+      }),
+      link: z.object({
+        id: textField,
+        prerequisiteResourceId: textField,
+        prerequisiteCapability: capabilitySchema,
+        confidence: confidenceSchema,
+      }),
+    })
+    .optional(),
   disclaimer: z.string().optional(),
 });
 

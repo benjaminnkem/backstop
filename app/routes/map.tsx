@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { APP_TITLE } from "@/lib/app-config";
 import type { WorkspaceMap } from "@shared/recovery";
+import type { SimulationRecord } from "@shared/simulation-contract";
 
 const KIND_LABEL: Record<WorkspaceMap["resources"][number]["kind"], string> = {
   service: "Service",
@@ -32,9 +33,27 @@ export function meta() {
 export default function MapRoute() {
   const [params, setParams] = useSearchParams();
   const workspaceId = params.get("workspace") ?? undefined;
+  const simulationId = params.get("simulation") ?? undefined;
   const selectedId = params.get("resource");
   const map = useActionQuery("get-workspace-map", {
     ...(workspaceId ? { workspaceId } : {}),
+  });
+  const latest = useActionQuery("get-simulation", {
+    ...(workspaceId ? { workspaceId } : {}),
+    ...(simulationId ? { simulationId } : {}),
+  });
+  const run = useActionMutation("run-simulation", {
+    onSuccess: (result) => {
+      const next = new URLSearchParams(params);
+      next.set("workspace", result.simulation.workspaceId);
+      next.set("simulation", result.simulation.id);
+      setParams(next);
+    },
+    onError: (error) => {
+      toast.error(
+        actionErrorMessage(error) ?? "The simulation did not finish.",
+      );
+    },
   });
   const seed = useActionMutation("seed-northstar", {
     onSuccess: (result) => {
@@ -96,10 +115,23 @@ export default function MapRoute() {
     );
   }
 
+  const simulation =
+    run.data?.simulation ??
+    latest.data?.simulation ??
+    null;
   return (
     <MapDocument
       data={data}
+      simulation={simulation}
+      running={run.isPending}
       selectedId={selectedId}
+      onRunPhoneLoss={() =>
+        run.mutate({
+          workspaceId: data.workspace!.id,
+          name: "Primary administrator loses phone",
+          failed: [{ resourceId: "admin-phone", capability: "access" }],
+        })
+      }
       onSelect={(resourceId) => {
         const next = new URLSearchParams(params);
         next.set("workspace", data.workspace!.id);
@@ -113,14 +145,39 @@ export default function MapRoute() {
 
 function MapDocument({
   data,
+  simulation,
+  running,
   selectedId,
+  onRunPhoneLoss,
   onSelect,
 }: {
   data: WorkspaceMap;
+  simulation: SimulationRecord | null;
+  running: boolean;
   selectedId: string | null;
+  onRunPhoneLoss: () => void;
   onSelect: (resourceId: string) => void;
 }) {
   const byResource = useMemo(() => indexMap(data), [data]);
+  const impacts = useMemo(() => {
+    const indexed = new Map<string, SimulationRecord["impacts"][number]>();
+    for (const impact of simulation?.impacts ?? []) {
+      indexed.set(`${impact.resourceId}/${impact.capability}`, impact);
+    }
+    return indexed;
+  }, [simulation]);
+  const highlighted = useMemo(() => {
+    const ids = new Set<string>();
+    if (!selectedId || !simulation) return ids;
+    for (const impact of simulation.impacts) {
+      if (impact.resourceId !== selectedId) continue;
+      for (const node of impact.causalPath) ids.add(node.resourceId);
+    }
+    return ids;
+  }, [selectedId, simulation]);
+  const canRunPhoneLoss = data.resources.some(
+    (resource) => resource.slug === "admin-phone",
+  );
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <p className="text-sm text-[#15745B]">
@@ -134,6 +191,25 @@ function MapDocument({
         any one route can carry that capability. Inside a route, ALL means every
         prerequisite is required, and ANY means one is enough.
       </p>
+      <div className="mt-6 flex flex-col gap-3">
+        <Button
+          className="w-fit bg-[#15372F] text-white hover:bg-[#0E2420]"
+          disabled={!canRunPhoneLoss || running}
+          onClick={onRunPhoneLoss}
+        >
+          {running
+            ? "Evaluating documented paths…"
+            : "Lost administrator phone"}
+        </Button>
+        {simulation ? (
+          <SimulationSummary simulation={simulation} />
+        ) : (
+          <p className="text-sm text-[#15372F]/70">
+            Run a failure to see which modelled routes remain. Results stay on
+            this workspace.
+          </p>
+        )}
+      </div>
       <ul className="mt-8 flex flex-col gap-3">
         {data.resources.map((resource) => (
           <li key={resource.id}>
@@ -141,7 +217,9 @@ function MapDocument({
               className={
                 selectedId === resource.id
                   ? "rounded-[12px] border border-[#15745B] bg-[#F7F8F5] p-4"
-                  : "rounded-[12px] border border-[#15372F]/15 bg-white p-4"
+                  : highlighted.has(resource.id)
+                    ? "rounded-[12px] border border-[#8A5A00] bg-white p-4"
+                    : "rounded-[12px] border border-[#15372F]/15 bg-white p-4"
               }
             >
               <button
@@ -165,12 +243,24 @@ function MapDocument({
                 />
               </button>
               <div className="mt-4 flex flex-col gap-4">
-                {(byResource.get(resource.id) ?? []).map((capability) => (
+                {(byResource.get(resource.id) ?? []).map((capability) => {
+                  const impact = impacts.get(
+                    `${resource.id}/${capability.capability}`,
+                  );
+                  return (
                   <section key={capability.id}>
                     <h2 className="text-sm font-medium text-[#15372F]">
                       {capability.capability} · {capability.mode} ·{" "}
                       {capability.confidence}
+                      {impact ? (
+                        <StatusWord status={impact.status} />
+                      ) : null}
                     </h2>
+                    {impact ? (
+                      <p className="mt-1 text-sm leading-6 text-[#15372F]/80">
+                        {impact.explanation}
+                      </p>
+                    ) : null}
                     {capability.groups.length === 0 ? (
                       <p className="mt-1 text-sm text-[#15372F]/70">
                         No dependency group is recorded for this capability.
@@ -202,7 +292,8 @@ function MapDocument({
                       </ol>
                     )}
                   </section>
-                ))}
+                  );
+                })}
               </div>
             </article>
           </li>
@@ -213,6 +304,42 @@ function MapDocument({
       </p>
     </div>
   );
+}
+
+function SimulationSummary({ simulation }: { simulation: SimulationRecord }) {
+  const { summary } = simulation;
+  return (
+    <div className="rounded-[12px] border border-[#15372F]/15 bg-[#F7F8F5] px-4 py-3">
+      <p className="text-sm font-medium text-[#15372F]">{simulation.name}</p>
+      <p className="mt-1 text-sm leading-6 text-[#15372F]/80">
+        {summary.blocked} blocked, {summary.available} available,{" "}
+        {summary.at_risk} at risk, {summary.unknown} unknown. These counts are
+        per capability in the model.
+      </p>
+      {simulation.warnings.map((warning) => (
+        <p key={warning} className="mt-2 text-sm leading-6 text-[#8A5A00]">
+          {warning}
+        </p>
+      ))}
+      <p className="mt-2 text-sm text-[#15372F]/70">
+        Select a resource to mark the causal path. A recovery status does not
+        change access.
+      </p>
+    </div>
+  );
+}
+
+function StatusWord({ status }: { status: SimulationRecord["impacts"][number]["status"] }) {
+  const tone =
+    status === "available"
+      ? "text-[#15745B]"
+      : status === "blocked"
+        ? "text-[#9B2C2C]"
+        : status === "at_risk"
+          ? "text-[#8A5A00]"
+          : "text-[#5C6562]";
+  const label = status === "at_risk" ? "at risk" : status;
+  return <span className={`ms-2 font-semibold ${tone}`}>{label}</span>;
 }
 
 function indexMap(data: WorkspaceMap) {
