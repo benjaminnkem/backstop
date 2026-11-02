@@ -177,6 +177,15 @@ export const workspaceMapSchema = z.object({
 
 export type WorkspaceMap = z.infer<typeof workspaceMapSchema>;
 
+const writeReceiptSchema = z
+  .object({
+    changed: z.boolean(),
+    verified: z.union([z.boolean(), z.literal("unverified")]),
+    summary: z.string(),
+    subject: z.string().optional(),
+  })
+  .optional();
+
 export const seedNorthstarResultSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -185,11 +194,36 @@ export const seedNorthstarResultSchema = z.object({
   capabilityCount: z.number().int(),
   groupCount: z.number().int(),
   linkCount: z.number().int(),
-  _receipt: z
-    .object({
-      changed: z.boolean(),
-      verified: z.union([z.boolean(), z.literal("unverified")]),
-      summary: z.string(),
-    })
-    .optional(),
+  _receipt: writeReceiptSchema,
+});
+
+export const createResourceResultSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  nextRequiredAction: z.literal("create-capability"),
+  _receipt: writeReceiptSchema,
+});
+
+export const createCapabilityResultSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  resourceId: z.string(),
+  capability: capabilitySchema,
+  mode: capabilityModeSchema,
+  confidence: confidenceSchema,
+  nextRequiredAction: z.literal("add-dependency-route").optional(),
+  _receipt: writeReceiptSchema,
+});
+
+export const addDependencyRouteResultSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  resourceId: z.string(),
+  groupSlug: z.string(),
+  linkId: z.string(),
+  linkSlug: z.string(),
+  label: z.string(),
+  _receipt: writeReceiptSchema,
 });

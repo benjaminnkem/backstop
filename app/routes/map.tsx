@@ -65,6 +65,13 @@ export default function MapRoute() {
       );
     },
   });
+  const recordRoute = useActionMutation("add-dependency-route", {
+    onError: (error) => {
+      toast.error(
+        actionErrorMessage(error) ?? "The route was not recorded.",
+      );
+    },
+  });
 
   if (map.isPending) {
     return (
@@ -125,11 +132,26 @@ export default function MapRoute() {
       simulation={simulation}
       running={run.isPending}
       selectedId={selectedId}
+      recordingRoute={recordRoute.isPending}
       onRunPhoneLoss={() =>
         run.mutate({
           workspaceId: data.workspace!.id,
           name: "Primary administrator loses phone",
           failed: [{ resourceId: "admin-phone", capability: "access" }],
+        })
+      }
+      onRecordKeyRoute={() =>
+        recordRoute.mutate({
+          workspaceId: data.workspace!.id,
+          resourceId: "workspace-email",
+          capability: "access",
+          groupSlug: "email-key-route",
+          requirementMode: "ALL",
+          label: "Independently configured hardware key",
+          linkSlug: "l9",
+          prerequisiteResourceId: "backup-key",
+          prerequisiteCapability: "access",
+          confidence: "verified",
         })
       }
       onSelect={(resourceId) => {
@@ -147,15 +169,19 @@ function MapDocument({
   data,
   simulation,
   running,
+  recordingRoute,
   selectedId,
   onRunPhoneLoss,
+  onRecordKeyRoute,
   onSelect,
 }: {
   data: WorkspaceMap;
   simulation: SimulationRecord | null;
   running: boolean;
+  recordingRoute: boolean;
   selectedId: string | null;
   onRunPhoneLoss: () => void;
+  onRecordKeyRoute: () => void;
   onSelect: (resourceId: string) => void;
 }) {
   const byResource = useMemo(() => indexMap(data), [data]);
@@ -178,6 +204,13 @@ function MapDocument({
   const canRunPhoneLoss = data.resources.some(
     (resource) => resource.slug === "admin-phone",
   );
+  const keyRouteRecorded = data.groups.some(
+    (group) => group.slug === "email-key-route",
+  );
+  const canRecordKeyRoute =
+    !keyRouteRecorded &&
+    data.resources.some((resource) => resource.slug === "workspace-email") &&
+    data.resources.some((resource) => resource.slug === "backup-key");
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <p className="text-sm text-[#15745B]">
@@ -192,15 +225,29 @@ function MapDocument({
         prerequisite is required, and ANY means one is enough.
       </p>
       <div className="mt-6 flex flex-col gap-3">
-        <Button
-          className="w-fit bg-[#15372F] text-white hover:bg-[#0E2420]"
-          disabled={!canRunPhoneLoss || running}
-          onClick={onRunPhoneLoss}
-        >
-          {running
-            ? "Evaluating documented paths…"
-            : "Lost administrator phone"}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            className="w-fit bg-[#15372F] text-white hover:bg-[#0E2420]"
+            disabled={!canRunPhoneLoss || running}
+            onClick={onRunPhoneLoss}
+          >
+            {running
+              ? "Evaluating documented paths…"
+              : "Lost administrator phone"}
+          </Button>
+          {canRecordKeyRoute ? (
+            <Button
+              variant="outline"
+              className="w-fit"
+              disabled={recordingRoute}
+              onClick={onRecordKeyRoute}
+            >
+              {recordingRoute
+                ? "Recording route…"
+                : "Record hardware-key route"}
+            </Button>
+          ) : null}
+        </div>
         {simulation ? (
           <SimulationSummary simulation={simulation} />
         ) : (
@@ -322,8 +369,9 @@ function SimulationSummary({ simulation }: { simulation: SimulationRecord }) {
         </p>
       ))}
       <p className="mt-2 text-sm text-[#15372F]/70">
-        Select a resource to mark the causal path. A recovery status does not
-        change access.
+        This result stays saved. Editing the map does not rewrite it. Select a
+        resource to mark the causal path. A recovery status does not change
+        access.
       </p>
     </div>
   );

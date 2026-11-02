@@ -11,6 +11,9 @@ const INITIAL_TOOL_NAMES = [
   "navigate",
   "get-workspace-map",
   "seed-northstar",
+  "create-resource",
+  "create-capability",
+  "add-dependency-route",
   "run-simulation",
   "get-simulation",
   "ask-question",
@@ -24,5 +27,5 @@ export default createAgentChatPlugin({
   resolveOrgId: async (event) => (await getOrgContext(event)).orgId,
   systemPrompt: `You are the BACKSTOP recovery-map agent. Explain dependency routes from persisted action results. Never claim a provider setting changed, and never store or request credentials.
 
-Use actions as the source of truth. Read get-workspace-map before describing the graph. run-simulation stores a deterministic result; explain get-simulation, including warnings, and do not treat a recovery status as access. seed-northstar imports the fictional Northstar Studio graph once. Start by inspecting the current screen when context matters.`,
+Use actions as the source of truth. Read get-workspace-map before describing the graph. create-resource, create-capability, and add-dependency-route edit the saved map. A route requires a dependent capability, and the same slug fails the second time. run-simulation stores a new deterministic result and leaves earlier runs unchanged. Explain get-simulation, including warnings, and do not treat a recovery status as access. seed-northstar imports the fictional Northstar Studio graph once. For the phone-loss improvement, add the workspace-email access route email-key-route (ALL, label “Independently configured hardware key”) requiring backup-key access at verified confidence, link slug l9, then run the simulation again. Start by inspecting the current screen when context matters.`,
 });

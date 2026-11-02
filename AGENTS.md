@@ -34,20 +34,21 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 
 ## BACKSTOP
 
-Recovery map for a team. `/map` lists resources and the access, recovery, and administration routes recorded for them. Chat stays at `/chat`.
+Recovery map at `/map`. Chat stays at `/chat`. Manual mapping only: no provider OAuth, no stored credentials, and no claim that a simulation changed an external account. `available` is the model. Recovery does not make access available. Missing groups are not independence.
 
-Manual mapping only. Do not add provider OAuth, store credentials, or say a simulation changed an external account. `available` means the modelled route is available. A recovery route does not make access available. Missing groups are not proof of independence.
+One Northstar sample per team (`org:<id>` or `user:<email>`). `seed-northstar` is idempotent. Domain tables are `recovery_*`.
 
-One Northstar sample exists per team (`org:<id>` or `user:<email>`). `seed-northstar` is idempotent. Domain tables are `recovery_*` because the framework already owns `resources`.
+`navigation.view` is `map` on `/map`. `workspace`, `resource`, and `simulation` query params are `navigation.workspaceId`, `navigation.selectedResourceId`, and `navigation.simulationId`.
 
-`navigation.view` is `map` on `/map`. `navigation.workspaceId`, `navigation.selectedResourceId`, and `navigation.simulationId` come from the `workspace`, `resource`, and `simulation` query params.
-
-Simulation status is per capability. `blocked` means every recorded route is blocked. A recovery cycle is a warning, not a lockout. `recovery: available` does not make `access` available.
+Status is per capability. `blocked` means every recorded route is blocked. A recovery cycle warns and is not a lockout. Saved runs stay as they were when the map changes.
 
 | Action | Purpose |
 | --- | --- |
 | `get-workspace-map` | Read one workspace graph. Optional `workspaceId`. |
 | `seed-northstar` | Import the fictional Northstar Studio graph once. |
-| `run-simulation` | Persist a deterministic failure run. `failed` accepts resource ids or slugs. |
-| `get-simulation` | Read one saved run, or the latest run when `simulationId` is omitted. |
+| `create-resource` | Add a resource. Then `create-capability`. No capability is implied. |
+| `create-capability` | Record access, recovery, or administration. A duplicate fails. |
+| `add-dependency-route` | Add one route on a dependent capability. A duplicate slug fails. |
+| `run-simulation` | Persist a new deterministic run. `failed` accepts ids or slugs. |
+| `get-simulation` | Read one saved run, or the latest when `simulationId` is omitted. |
 | `navigate` | Open `map` with optional `workspaceId`, `selectedResourceId`, and `simulationId`. |
