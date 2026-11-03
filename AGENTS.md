@@ -34,7 +34,7 @@ Before building common workspace or agent UI, read `agent-native-toolkit`; for s
 
 ## BACKSTOP
 
-Recovery map at `/map`. Chat stays at `/chat`. Manual mapping only: no provider OAuth, no stored credentials, and no claim that a simulation changed an external account. `available` is the model. Recovery does not make access available. Missing groups are not independence.
+Recovery map at `/map`. Chat stays at `/chat`. No provider OAuth, stored credentials, or claim that a simulation changed an account. `available` is the model. Recovery does not grant access. Missing groups are not independence.
 
 One Northstar sample per team (`org:<id>` or `user:<email>`). `seed-northstar` is idempotent. Domain tables are `recovery_*`.
 
@@ -44,11 +44,14 @@ Status is per capability. `blocked` means every recorded route is blocked. A rec
 
 | Action | Purpose |
 | --- | --- |
-| `get-workspace-map` | Read one workspace graph. Optional `workspaceId`. |
-| `seed-northstar` | Import the fictional Northstar Studio graph once. |
-| `create-resource` | Add a resource. Then `create-capability`. No capability is implied. |
-| `create-capability` | Record access, recovery, or administration. A duplicate fails. |
-| `add-dependency-route` | Add one route on a dependent capability. A duplicate slug fails. |
-| `run-simulation` | Persist a new deterministic run. `failed` accepts ids or slugs. |
-| `get-simulation` | Read one saved run, or the latest when `simulationId` is omitted. |
-| `navigate` | Open `map` with optional `workspaceId`, `selectedResourceId`, and `simulationId`. |
+| `get-workspace-map` | Read one workspace graph. |
+| `seed-northstar` | Import Northstar Studio once. |
+| `create-resource` | Add a resource. Then `create-capability`. |
+| `create-capability` | Record access, recovery, or administration. |
+| `add-dependency-route` | Add one route on a dependent capability. |
+| `run-simulation` | Persist a new run. Accepts ids or slugs. |
+| `get-simulation` | Read one saved run, or the latest. |
+| `list-remediation-tasks` | Read internal tasks. They do not change the map. |
+| `create-remediation-task` | Record a task only when the user asks. |
+| `update-remediation-task` | Change status, priority, or label. |
+| `navigate` | Open `map` with workspace, resource, and simulation ids. |

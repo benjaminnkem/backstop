@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
+import { RemediationTasks } from "@/components/remediation-tasks";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { APP_TITLE } from "@/lib/app-config";
@@ -347,6 +348,13 @@ function MapDocument({
           </li>
         ))}
       </ul>
+      {data.workspace ? (
+        <RemediationTasks
+          workspaceId={data.workspace.id}
+          simulationId={simulation?.id}
+          resourceId={selectedId ?? undefined}
+        />
+      ) : null}
       <p className="mt-8 text-sm leading-6 text-[#15372F]/70">
         {data.disclaimer}
       </p>

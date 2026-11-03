@@ -161,6 +161,33 @@ CREATE INDEX IF NOT EXISTS recovery_simulation_impacts_workspace
   ON recovery_simulation_impacts (workspace_id);
 `,
     },
+    {
+      version: 2,
+      name: "recovery_remediation_tasks",
+      sql: `
+CREATE TABLE IF NOT EXISTS recovery_remediation_tasks (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES recovery_workspaces (id),
+  resource_id TEXT REFERENCES recovery_resources (id),
+  simulation_id TEXT REFERENCES recovery_simulation_runs (id),
+  title TEXT NOT NULL,
+  description TEXT,
+  reason TEXT,
+  priority TEXT NOT NULL DEFAULT 'medium',
+  status TEXT NOT NULL DEFAULT 'open',
+  owner_label TEXT,
+  created_by TEXT NOT NULL,
+  owner_email TEXT NOT NULL,
+  org_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (${timestampDefault}),
+  updated_at TEXT NOT NULL DEFAULT (${timestampDefault}),
+  CONSTRAINT recovery_remediation_tasks_priority CHECK (priority IN ('urgent', 'high', 'medium', 'low')),
+  CONSTRAINT recovery_remediation_tasks_status CHECK (status IN ('open', 'in_progress', 'completed', 'dismissed'))
+);
+CREATE INDEX IF NOT EXISTS recovery_remediation_tasks_workspace_status
+  ON recovery_remediation_tasks (workspace_id, status);
+`,
+    },
   ],
   { table: "backstop_migrations" },
 );

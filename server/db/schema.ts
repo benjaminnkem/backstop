@@ -281,3 +281,42 @@ export const recoverySimulationImpacts = pgTable(
     ),
   ],
 );
+
+export const recoveryRemediationTasks = pgTable(
+  "recovery_remediation_tasks",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => recoveryWorkspaces.id),
+    resourceId: text("resource_id").references(() => recoveryResources.id),
+    simulationId: text("simulation_id").references(
+      () => recoverySimulationRuns.id,
+    ),
+    title: text("title").notNull(),
+    description: text("description"),
+    reason: text("reason"),
+    priority: text("priority").notNull().default("medium"),
+    status: text("status").notNull().default("open"),
+    ownerLabel: text("owner_label"),
+    createdBy: text("created_by").notNull(),
+    ownerEmail: text("owner_email").notNull(),
+    orgId: text("org_id"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [
+    index("recovery_remediation_tasks_workspace_status").on(
+      table.workspaceId,
+      table.status,
+    ),
+    check(
+      "recovery_remediation_tasks_priority",
+      sql`${table.priority} in ('urgent', 'high', 'medium', 'low')`,
+    ),
+    check(
+      "recovery_remediation_tasks_status",
+      sql`${table.status} in ('open', 'in_progress', 'completed', 'dismissed')`,
+    ),
+  ],
+);
