@@ -13,8 +13,10 @@ export default defineConfig({
       "app/root.tsx",
       "app/components/layout/{Layout,Sidebar}.tsx",
       "app/components/chat/ChatRouteContent.tsx",
-      "app/routes/{home,chat.$threadId}.tsx",
+      "app/routes/{home,chat.$threadId,map,remediation}.tsx",
     ],
+    // dagre ships CommonJS; pre-bundle it so its default export resolves.
+    include: ["@dagrejs/dagre", "@xyflow/react"],
   },
   plugins: [
     ...reactRouterPlugins(),

@@ -1,9 +1,80 @@
 @import "@fontsource-variable/inter";
+@import "@xyflow/react/dist/style.css";
 
 @import "tailwindcss";
 @import "@agent-native/toolkit/styles.css";
 
 @source "./**/*.{ts,tsx}";
+
+/* BACKSTOP domain tokens. Status colours always pair with a text label. */
+:root {
+  --bs-ink: 165 45% 15%;
+  --bs-brand: 163 69% 27%;
+  --bs-brand-foreground: 0 0% 100%;
+  --bs-canvas: 80 14% 97%;
+  --bs-blocked: 0 58% 39%;
+  --bs-blocked-soft: 0 70% 96%;
+  --bs-at-risk: 38 100% 27%;
+  --bs-at-risk-soft: 40 90% 94%;
+  --bs-available: 163 69% 27%;
+  --bs-available-soft: 158 40% 94%;
+  --bs-unknown: 165 5% 38%;
+  --bs-unknown-soft: 165 6% 93%;
+  --bs-path: 38 100% 40%;
+}
+
+.dark {
+  --bs-ink: 160 25% 90%;
+  --bs-brand: 160 50% 50%;
+  --bs-brand-foreground: 165 45% 8%;
+  --bs-canvas: 0 0% 11%;
+  --bs-blocked: 0 80% 70%;
+  --bs-blocked-soft: 0 35% 17%;
+  --bs-at-risk: 38 90% 62%;
+  --bs-at-risk-soft: 38 45% 15%;
+  --bs-available: 155 50% 56%;
+  --bs-available-soft: 160 30% 14%;
+  --bs-unknown: 165 6% 64%;
+  --bs-unknown-soft: 165 5% 19%;
+  --bs-path: 38 95% 60%;
+}
+
+@theme inline {
+  --color-ink: hsl(var(--bs-ink));
+  --color-brand: hsl(var(--bs-brand));
+  --color-brand-foreground: hsl(var(--bs-brand-foreground));
+  --color-canvas: hsl(var(--bs-canvas));
+  --color-status-blocked: hsl(var(--bs-blocked));
+  --color-status-blocked-soft: hsl(var(--bs-blocked-soft));
+  --color-status-at-risk: hsl(var(--bs-at-risk));
+  --color-status-at-risk-soft: hsl(var(--bs-at-risk-soft));
+  --color-status-available: hsl(var(--bs-available));
+  --color-status-available-soft: hsl(var(--bs-available-soft));
+  --color-status-unknown: hsl(var(--bs-unknown));
+  --color-status-unknown-soft: hsl(var(--bs-unknown-soft));
+  --color-path: hsl(var(--bs-path));
+}
+
+/* React Flow follows the app theme instead of its own defaults. */
+.backstop-flow {
+  --xy-background-color: hsl(var(--bs-canvas));
+  --xy-background-pattern-color: hsl(var(--border));
+  --xy-edge-stroke: hsl(var(--muted-foreground) / 0.55);
+  --xy-controls-button-background-color: hsl(var(--card));
+  --xy-controls-button-background-color-hover: hsl(var(--accent));
+  --xy-controls-button-color: hsl(var(--foreground));
+  --xy-controls-button-border-color: hsl(var(--border));
+  --xy-attribution-background-color: transparent;
+}
+
+.backstop-flow .react-flow__node {
+  cursor: pointer;
+}
+
+.backstop-flow .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
 
 :root {
   --background: 0 0% 100%;

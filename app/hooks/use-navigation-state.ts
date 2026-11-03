@@ -89,6 +89,7 @@ function viewForPath(pathname: string): string {
   if (isChatPathname(pathname)) return "chat";
   if (pathname === HOME_PATH) return "home";
   if (pathname === "/map" || pathname.startsWith("/map/")) return "map";
+  if (pathname === "/remediation") return "remediation";
   if (pathname.startsWith("/database")) return "database";
   if (pathname.startsWith("/extensions")) return "extensions";
   if (pathname.startsWith("/observability")) return "observability";
@@ -109,6 +110,8 @@ function pathForView(view?: string): string {
       return HOME_PATH;
     case "map":
       return "/map";
+    case "remediation":
+      return "/remediation";
     case "database":
       return "/database";
     case "extensions":
@@ -128,7 +131,7 @@ function pathForView(view?: string): string {
 
 export function pathForCommand(command: any): string {
   const path = pathForView(command?.view);
-  if (command?.view === "map") {
+  if (command?.view === "map" || command?.view === "remediation") {
     const params = new URLSearchParams();
     if (typeof command.workspaceId === "string" && command.workspaceId) {
       params.set("workspace", command.workspaceId);

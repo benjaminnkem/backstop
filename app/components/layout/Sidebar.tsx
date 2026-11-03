@@ -14,6 +14,7 @@ import { OrgSwitcher } from "@agent-native/toolkit/app/org";
 import { openCommandMenu } from "@agent-native/toolkit/app/shared";
 import { AgentNativeIcon } from "@agent-native/toolkit/app/shared/AgentNativeIcon";
 import {
+  IconChecklist,
   IconEdit,
   IconHome,
   IconRoute,
@@ -154,14 +155,22 @@ function HomeNavLink({ collapsed }: { collapsed: boolean }) {
   return <div className="px-2">{link}</div>;
 }
 
-function MapNavLink({ collapsed }: { collapsed: boolean }) {
-  const t = useT();
+function DomainNavLink({
+  collapsed,
+  to,
+  label,
+  icon: Icon,
+}: {
+  collapsed: boolean;
+  to: string;
+  label: string;
+  icon: typeof IconRoute;
+}) {
   const location = useLocation();
-  const active = location.pathname === "/map";
-  const label = t("navigation.map");
+  const active = location.pathname === to;
   const link = (
     <Link
-      to="/map"
+      to={to}
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? label : undefined}
       className={cn(
@@ -172,7 +181,7 @@ function MapNavLink({ collapsed }: { collapsed: boolean }) {
           : "h-8 w-full gap-3 rounded-lg px-3 text-sm font-medium",
       )}
     >
-      <IconRoute className="size-4 shrink-0" strokeWidth={1.8} />
+      <Icon className="size-4 shrink-0" strokeWidth={1.8} />
       <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
     </Link>
   );
@@ -444,7 +453,18 @@ export function Sidebar({
         )}
       >
         <HomeNavLink collapsed={collapsed} />
-        <MapNavLink collapsed={collapsed} />
+        <DomainNavLink
+          collapsed={collapsed}
+          to="/map"
+          label={t("navigation.map")}
+          icon={IconRoute}
+        />
+        <DomainNavLink
+          collapsed={collapsed}
+          to="/remediation"
+          label={t("navigation.remediation")}
+          icon={IconChecklist}
+        />
         <ChatThreadsSection collapsed={collapsed} />
       </nav>
 
