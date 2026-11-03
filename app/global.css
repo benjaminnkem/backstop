@@ -1,4 +1,6 @@
 @import "@fontsource-variable/inter";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 @import "@xyflow/react/dist/style.css";
 
 @import "tailwindcss";
@@ -40,6 +42,7 @@
 }
 
 @theme inline {
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --color-ink: hsl(var(--bs-ink));
   --color-brand: hsl(var(--bs-brand));
   --color-brand-foreground: hsl(var(--bs-brand-foreground));

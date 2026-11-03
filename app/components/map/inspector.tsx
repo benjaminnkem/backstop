@@ -118,9 +118,7 @@ export function Inspector({
 
         <section className="px-4 py-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Open tasks
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground">Open tasks</h3>
             <Button asChild variant="ghost" size="xs">
               <Link to={`/remediation?${taskParams.toString()}`}>
                 <IconChecklist className="size-3" />
@@ -227,13 +225,11 @@ function CapabilitySection({
           {capability.groups.map((group, index) => (
             <li key={group.id}>
               {index > 0 ? (
-                <p className="my-1 text-[11px] font-medium uppercase tracking-wide text-brand">
-                  or
-                </p>
+                <p className="my-1 ps-2.5 font-mono text-[11px] text-muted-foreground">or</p>
               ) : null}
               <div className="rounded-lg border border-border bg-canvas px-2.5 py-2">
                 <p className="text-xs text-foreground">
-                  <span className="me-1.5 rounded bg-muted px-1 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  <span className="me-2 font-mono text-[10px] text-muted-foreground">
                     {group.requirementMode}
                   </span>
                   {group.label}
@@ -439,7 +435,7 @@ function AddRouteForm({
         <Button
           type="submit"
           size="sm"
-          className="flex-1 bg-brand text-brand-foreground hover:bg-brand/90"
+          className="flex-1 bg-ink text-background hover:bg-ink/85"
           disabled={!ready || record.isPending}
         >
           {record.isPending ? "Recording route…" : "Record route"}

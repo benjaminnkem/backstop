@@ -89,12 +89,12 @@ export function ScenarioPanel({
       )}
     >
       <div className="border-b border-border px-4 py-4">
-        <p className="text-xs font-medium text-brand">
-          {data.workspace?.fictional ? "Fictional sample team" : "Workspace"}
-        </p>
-        <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-foreground">
+        <h1 className="text-lg font-semibold tracking-tight text-foreground">
           {data.workspace?.name}
         </h1>
+        {data.workspace?.fictional ? (
+          <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">fictional sample</p>
+        ) : null}
       </div>
 
       <section className="border-b border-border px-4 py-4" aria-labelledby="scenario-heading">
@@ -171,7 +171,7 @@ export function ScenarioPanel({
           )}
         </p>
         <Button
-          className="mt-3 w-full bg-brand text-brand-foreground hover:bg-brand/90"
+          className="mt-3 w-full bg-ink text-background hover:bg-ink/85"
           disabled={!pending || running}
           onClick={() => pending && onRun(pending)}
         >
@@ -190,21 +190,24 @@ export function ScenarioPanel({
               Saved {formatTime(simulation.createdAt)} · counts are per capability
             </p>
           </div>
-          <dl className="grid grid-cols-4 gap-1.5">
-            {STATUS_ORDER.map((status) => (
-              <div
-                key={status}
-                className="flex flex-col items-start gap-1 rounded-lg border border-border px-2 py-1.5"
-              >
-                <dt className="order-2 text-[10px] leading-none text-muted-foreground">
-                  {STATUS_LABEL[status]}
-                </dt>
-                <dd className="order-1 text-lg font-semibold leading-none text-foreground tabular-nums">
-                  {simulation.summary[status]}
-                </dd>
-              </div>
+          <p className="font-mono text-xs leading-5 text-foreground">
+            {STATUS_ORDER.map((status, index) => (
+              <span key={status}>
+                {index > 0 ? <span className="text-muted-foreground"> · </span> : null}
+                <span
+                  className={
+                    status === "blocked" && simulation.summary.blocked > 0
+                      ? "text-status-blocked"
+                      : status === "at_risk" && simulation.summary.at_risk > 0
+                        ? "text-status-at-risk"
+                        : undefined
+                  }
+                >
+                  {simulation.summary[status]} {STATUS_LABEL[status].toLowerCase()}
+                </span>
+              </span>
             ))}
-          </dl>
+          </p>
           {simulation.warnings.map((warning) => (
             <p
               key={warning}
@@ -281,17 +284,17 @@ function ScenarioOption({
       onClick={onSelect}
       className={cn(
         "flex items-start gap-2.5 rounded-lg border px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        checked ? "border-brand bg-brand/5" : "border-transparent hover:bg-accent",
+        checked ? "border-border bg-accent" : "border-transparent hover:bg-accent/60",
       )}
     >
       <span
         aria-hidden
         className={cn(
           "mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full border",
-          checked ? "border-brand" : "border-muted-foreground/50",
+          checked ? "border-foreground" : "border-muted-foreground/50",
         )}
       >
-        {checked ? <span className="size-1.5 rounded-full bg-brand" /> : null}
+        {checked ? <span className="size-1.5 rounded-full bg-foreground" /> : null}
       </span>
       <span className="min-w-0">
         <span className="block text-xs font-medium text-foreground">{label}</span>

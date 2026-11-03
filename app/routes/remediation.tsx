@@ -38,10 +38,10 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   low: "Low",
 };
 const PRIORITY_TONE: Record<TaskPriority, string> = {
-  urgent: "bg-status-blocked-soft text-status-blocked",
-  high: "bg-status-at-risk-soft text-status-at-risk",
-  medium: "bg-muted text-foreground/80",
-  low: "bg-muted text-muted-foreground",
+  urgent: "text-status-blocked",
+  high: "text-status-at-risk",
+  medium: "text-foreground/70",
+  low: "text-muted-foreground",
 };
 const STATUS_LABEL: Record<TaskStatus, string> = {
   open: "Open",
@@ -169,7 +169,7 @@ export default function RemediationRoute() {
               </p>
             </div>
             <Button
-              className="bg-brand text-brand-foreground hover:bg-brand/90"
+              className="bg-ink text-background hover:bg-ink/85"
               onClick={() => setPane({ create: true })}
             >
               <IconPlus className="size-4" />
@@ -290,8 +290,8 @@ function TaskRow({
         </button>
       </td>
       <td className="py-2.5 pe-3">
-        <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", PRIORITY_TONE[task.priority])}>
-          {PRIORITY_LABEL[task.priority]}
+        <span className={cn("font-mono text-xs", PRIORITY_TONE[task.priority])}>
+          {task.priority}
         </span>
       </td>
       <td className="py-2.5 pe-3 text-foreground/85">{STATUS_LABEL[task.status]}</td>
@@ -509,7 +509,7 @@ function TaskPane({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="submit"
-            className="bg-brand text-brand-foreground hover:bg-brand/90"
+            className="bg-ink text-background hover:bg-ink/85"
             disabled={!title.trim() || pending || !dirty}
           >
             {pending ? "Saving…" : task ? "Save changes" : "Record task"}

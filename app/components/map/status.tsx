@@ -9,11 +9,12 @@ export const STATUS_LABEL: Record<SimStatus, string> = {
   unknown: "Unknown",
 };
 
+/** Colour is reserved for states that need attention. */
 const STATUS_TONE: Record<SimStatus, string> = {
-  blocked: "bg-status-blocked-soft text-status-blocked",
-  at_risk: "bg-status-at-risk-soft text-status-at-risk",
-  available: "bg-status-available-soft text-status-available",
-  unknown: "bg-status-unknown-soft text-status-unknown",
+  blocked: "text-status-blocked font-medium",
+  at_risk: "text-status-at-risk font-medium",
+  available: "text-foreground/70",
+  unknown: "text-muted-foreground",
 };
 
 const STATUS_DOT: Record<SimStatus, string> = {
@@ -64,7 +65,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center gap-1.5 rounded-md px-1.5 text-[11px] font-medium leading-none",
+        "inline-flex h-5 items-center gap-1.5 whitespace-nowrap text-xs leading-none",
         STATUS_TONE[status],
         className,
       )}

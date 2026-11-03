@@ -33,7 +33,6 @@ const ResourceNodeView = memo(function ResourceNodeView({
   data,
 }: NodeProps<ResourceNode>) {
   const { resource, capabilities, selected, onPath, dimmed, onSelect } = data;
-  const anyFailed = capabilities.some((item) => item.failed);
   return (
     <>
       <Handle type="target" position={Position.Left} isConnectable={false} />
@@ -62,11 +61,7 @@ const ResourceNodeView = memo(function ResourceNodeView({
               {KIND_LABEL[resource.kind]} · {resource.criticality}
             </span>
           </span>
-          {anyFailed ? (
-            <span className="shrink-0 rounded-md bg-status-blocked px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-background">
-              Failed
-            </span>
-          ) : null}
+
         </span>
         <span className="mt-2 flex flex-col gap-1">
           {capabilities.length === 0 ? (
@@ -84,7 +79,7 @@ const ResourceNodeView = memo(function ResourceNodeView({
               >
                 <span className="flex min-w-0 items-center gap-1.5 text-foreground/85">
                   {CAPABILITY_LABEL[item.capability]}
-                  {item.mode === "independent" ? (
+                  {item.mode === "independent" && !item.failed ? (
                     <span className="text-[10px] text-muted-foreground">
                       independent
                     </span>
@@ -96,7 +91,12 @@ const ResourceNodeView = memo(function ResourceNodeView({
                   ) : null}
                 </span>
                 {item.status ? (
-                  <StatusBadge status={item.status} />
+                  <span className="flex items-center gap-2">
+                    {item.failed ? (
+                      <span className="whitespace-nowrap font-mono text-[10px] text-status-blocked">failed</span>
+                    ) : null}
+                    <StatusBadge status={item.status} />
+                  </span>
                 ) : (
                   <span className="text-[11px] text-muted-foreground">
                     Not run

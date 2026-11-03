@@ -106,7 +106,7 @@ export default function MapRoute() {
           Nothing here signs in to a live provider.
         </p>
         <Button
-          className="mt-6 w-fit bg-brand text-brand-foreground hover:bg-brand/90"
+          className="mt-6 w-fit bg-ink text-background hover:bg-ink/85"
           disabled={seed.isPending}
           onClick={() => seed.mutate({})}
         >

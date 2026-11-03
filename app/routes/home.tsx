@@ -4,16 +4,17 @@ import {
   useActionMutation,
   useActionQuery,
 } from "@agent-native/core/client/hooks";
-import { IconArrowRight, IconMessage, IconPlayerPlay } from "@tabler/icons-react";
+import { IconArrowRight } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 
-import { CAPABILITY_LABEL, indexMap } from "@/components/map/map-model";
 import { StatusBadge } from "@/components/map/status";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { APP_TITLE } from "@/lib/app-config";
+import { cn } from "@/lib/utils";
+import { buildLedger, describeRun, type LedgerRow } from "@shared/readiness";
 
 const SEO_TITLE = `${APP_TITLE} — Recovery readiness`;
 const SEO_DESCRIPTION =
@@ -30,6 +31,13 @@ export function meta() {
     { name: "twitter:description", content: SEO_DESCRIPTION },
   ];
 }
+
+const PRIORITY_TONE: Record<string, string> = {
+  urgent: "text-status-blocked",
+  high: "text-status-at-risk",
+  medium: "text-muted-foreground",
+  low: "text-muted-foreground",
+};
 
 export default function OverviewRoute() {
   const navigate = useNavigate();
@@ -52,53 +60,28 @@ export default function OverviewRoute() {
   });
 
   const data = map.data;
-  const model = useMemo(() => {
-    if (!data?.workspace) return null;
-    const indexed = indexMap(data);
-    const names = new Map(data.resources.map((item) => [item.id, item.name]));
-    const active = data.resources.filter((item) => item.status !== "archived");
-    const singleRoute: Array<{ resourceId: string; label: string }> = [];
-    const unmapped: Array<{ resourceId: string; label: string }> = [];
-    let unverified = 0;
-    for (const [resourceId, capabilities] of indexed) {
-      for (const capability of capabilities) {
-        const label = `${names.get(resourceId)} · ${CAPABILITY_LABEL[capability.capability].toLowerCase()}`;
-        if (capability.confidence !== "verified") unverified += 1;
-        if (capability.mode !== "dependent") continue;
-        if (capability.groups.length === 0) unmapped.push({ resourceId, label });
-        else if (capability.groups.length === 1) {
-          // One ANY route with several prerequisites still has alternatives.
-          const only = capability.groups[0]!;
-          if (!(only.requirementMode === "ANY" && only.links.length > 1)) {
-            singleRoute.push({ resourceId, label });
-          }
-        }
-        unverified += capability.groups
-          .flatMap((group) => group.links)
-          .filter((link) => link.confidence !== "verified").length;
-      }
-    }
-    return {
-      critical: active.filter((item) => item.criticality === "critical").length,
-      dependencies: data.links.length,
-      singleRoute,
-      unmapped,
-      unverified,
-    };
-  }, [data]);
+  const simulation = latest.data?.simulation ?? null;
+  const ledger = useMemo(
+    () => (data?.workspace ? buildLedger(data, simulation) : []),
+    [data, simulation],
+  );
+  const summary = useMemo(
+    () => (data?.workspace && simulation ? describeRun(data, simulation) : []),
+    [data, simulation],
+  );
 
   if (map.isPending) {
     return (
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 px-6 py-8">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-48 w-full" />
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-8 py-10">
+        <Skeleton className="h-7 w-56" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
   if (map.isError) {
     return (
-      <div className="mx-auto max-w-xl px-6 py-16">
+      <div className="mx-auto max-w-xl px-8 py-16">
         <p className="text-sm text-foreground">
           {actionErrorMessage(map.error) ?? "The workspace could not be loaded."}
         </p>
@@ -108,193 +91,237 @@ export default function OverviewRoute() {
       </div>
     );
   }
-  if (!data?.workspace || !model) {
+  if (!data?.workspace) {
     return (
-      <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center px-6 py-12">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+      <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center px-8 py-12">
+        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">
           When the normal way in stops working, is there another way in?
         </h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Map how your team signs in and recovers critical accounts, then test
-          what a lost phone or an unavailable inbox would block. Nothing here
-          connects to a live provider or stores a credential.
+        <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
+          Write down how your team signs in to and recovers each critical
+          account. Then see what a lost phone or an unavailable inbox would
+          block. Nothing here connects to a provider or stores a credential.
         </p>
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-8 flex flex-wrap gap-2">
           <Button
-            className="bg-brand text-brand-foreground hover:bg-brand/90"
+            className="bg-ink text-background hover:bg-ink/85"
             disabled={seed.isPending}
             onClick={() => seed.mutate({})}
           >
-            {seed.isPending ? "Opening sample team…" : "Explore sample team"}
+            {seed.isPending ? "Opening sample team…" : "Open the sample team"}
           </Button>
-          <Button variant="outline" onClick={askToMapResource}>
-            <IconMessage className="size-4" strokeWidth={1.6} />
-            Map your first service
+          <Button variant="ghost" onClick={askToMapResource}>
+            Map your first service with the agent
           </Button>
         </div>
       </div>
     );
   }
 
-  const simulation = latest.data?.simulation ?? null;
-  const openTasks = (tasks.data?.tasks ?? []).filter(
-    (task) => task.status === "open" || task.status === "in_progress",
-  );
-  const urgent = openTasks.filter((task) => task.priority === "urgent" || task.priority === "high");
   const ws = data.workspace;
+  const openTasks = (tasks.data?.tasks ?? [])
+    .filter((task) => task.status === "open" || task.status === "in_progress")
+    .slice(0, 5);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium text-brand">
-            {ws.fictional ? "Fictional sample team" : "Workspace"}
-          </p>
-          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-foreground">{ws.name}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={askToMapResource}>
-            <IconMessage className="size-4" strokeWidth={1.6} />
+    <div className="mx-auto w-full max-w-4xl px-8 py-10">
+      <header className="flex flex-wrap items-baseline justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {ws.name}
+          {ws.fictional ? (
+            <span className="ms-3 align-middle font-mono text-xs font-normal text-muted-foreground">
+              fictional sample
+            </span>
+          ) : null}
+        </h1>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={askToMapResource}>
             Map a resource
           </Button>
-          <Button asChild className="bg-brand text-brand-foreground hover:bg-brand/90">
-            <Link to={`/map?workspace=${ws.id}`}>
-              <IconPlayerPlay className="size-4" strokeWidth={1.8} />
-              Run a failure simulation
-            </Link>
+          <Button asChild size="sm" className="bg-ink text-background hover:bg-ink/85">
+            <Link to={`/map?workspace=${ws.id}`}>Run a scenario</Link>
           </Button>
         </div>
-      </div>
+      </header>
 
-      <dl className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Metric label="Critical resources" value={model.critical} />
-        <Metric label="Modelled dependencies" value={model.dependencies} />
-        <Metric label="Single-route capabilities" value={model.singleRoute.length} tone={model.singleRoute.length > 0 ? "warn" : undefined} />
-        <Metric label="Unverified or unmapped" value={model.unverified + model.unmapped.length} tone={model.unverified + model.unmapped.length > 0 ? "warn" : undefined} />
-        <Metric label="Open high-priority tasks" value={urgent.length} />
-      </dl>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-[3fr_2fr]">
-        <section className="rounded-xl border border-border bg-card p-4" aria-labelledby="latest-heading">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="latest-heading" className="text-sm font-semibold text-foreground">
-              Latest simulation
-            </h2>
-            {simulation ? (
+      <section className="mt-8 border-y border-border py-6" aria-label="Latest simulation">
+        {latest.isPending ? (
+          <Skeleton className="h-14 w-full" />
+        ) : simulation ? (
+          <>
+            <p className="max-w-3xl text-lg leading-8 text-foreground">{summary.join(" ")}</p>
+            <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground">
+              <span>{simulation.name}</span>
+              <span aria-hidden>·</span>
+              <time dateTime={simulation.createdAt}>{formatStamp(simulation.createdAt)}</time>
+              <span aria-hidden>·</span>
+              <span>run {simulation.id.slice(0, 4)}</span>
               <Link
                 to={`/map?workspace=${ws.id}&simulation=${simulation.id}`}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                className="ms-auto flex items-center gap-1 font-sans text-foreground/80 hover:text-foreground"
               >
-                Open on map <IconArrowRight className="size-3" />
+                Open on map <IconArrowRight className="size-3.5" />
               </Link>
-            ) : null}
-          </div>
-          {latest.isPending ? (
-            <Skeleton className="mt-3 h-20 w-full" />
-          ) : simulation ? (
-            <>
-              <p className="mt-2 text-base font-medium text-foreground">{simulation.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {new Date(simulation.createdAt).toLocaleString()} · counts are per capability in the model
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(["blocked", "at_risk", "unknown", "available"] as const).map((status) => (
-                  <span key={status} className="flex items-center gap-1.5 text-sm text-foreground">
-                    <span className="font-semibold tabular-nums">{simulation.summary[status]}</span>
-                    <StatusBadge status={status} />
-                  </span>
-                ))}
-              </div>
-              {simulation.warnings.length > 0 ? (
-                <p className="mt-3 text-xs leading-5 text-status-at-risk">{simulation.warnings[0]}</p>
-              ) : null}
-            </>
-          ) : (
-            <p className="mt-2 text-sm text-muted-foreground">
-              No run yet. Start with a lost administrator phone.
             </p>
-          )}
-        </section>
+          </>
+        ) : (
+          <p className="text-lg leading-8 text-muted-foreground">
+            No scenario has been run yet.{" "}
+            <Link to={`/map?workspace=${ws.id}`} className="text-foreground underline underline-offset-4">
+              Start with a lost administrator phone.
+            </Link>
+          </p>
+        )}
+      </section>
 
-        <section className="rounded-xl border border-border bg-card p-4" aria-labelledby="weak-heading">
-          <h2 id="weak-heading" className="text-sm font-semibold text-foreground">
-            Where the model is thin
+      <section className="mt-10" aria-labelledby="ledger-heading">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="ledger-heading" className="text-base font-semibold text-foreground">
+            Ways in
           </h2>
-          {model.singleRoute.length === 0 && model.unmapped.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Every dependent capability has more than one recorded route.
-            </p>
-          ) : (
-            <ul className="mt-2 flex flex-col gap-1">
-              {model.unmapped.map((item) => (
-                <WeakSpot key={`u-${item.label}`} workspaceId={ws.id} item={item} note="No route recorded" />
-              ))}
-              {model.singleRoute.map((item) => (
-                <WeakSpot key={`s-${item.label}`} workspaceId={ws.id} item={item} note="One route" />
-              ))}
-            </ul>
-          )}
+          <p className="font-mono text-xs text-muted-foreground">
+            <Dots count={1} /> = one recorded route<span className="ms-4 text-status-at-risk">●</span> = the only one
+          </p>
+        </div>
+        <table className="mt-3 w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+              <th className="py-2 pe-4 font-normal">System</th>
+              <th className="py-2 pe-4 font-normal">Access</th>
+              <th className="hidden py-2 pe-4 font-normal md:table-cell">Through</th>
+              <th className="py-2 pe-4 font-normal">Recovery</th>
+              <th className="py-2 text-right font-normal">Last run</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ledger.map((row) => (
+              <LedgerLine
+                key={row.resourceId}
+                row={row}
+                onOpen={() => navigate(`/map?workspace=${ws.id}&resource=${row.resourceId}`)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="mt-12" aria-labelledby="work-heading">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 id="work-heading" className="text-base font-semibold text-foreground">
+            Open work
+          </h2>
           <Link
             to={`/remediation?workspace=${ws.id}`}
-            className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
-            {openTasks.length} open {openTasks.length === 1 ? "task" : "tasks"} <IconArrowRight className="size-3" />
+            All tasks <IconArrowRight className="size-3" />
           </Link>
-        </section>
-      </div>
+        </div>
+        {openTasks.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">No open tasks.</p>
+        ) : (
+          <ul className="mt-3 border-t border-border">
+            {openTasks.map((task) => (
+              <li key={task.id} className="border-b border-border">
+                <Link
+                  to={`/remediation?workspace=${ws.id}&task=${task.id}`}
+                  className="grid grid-cols-[4.5rem_1fr_auto] items-baseline gap-4 py-2.5 text-sm hover:bg-accent/40"
+                >
+                  <span className={cn("font-mono text-xs", PRIORITY_TONE[task.priority])}>
+                    {task.priority}
+                  </span>
+                  <span className="truncate text-foreground">{task.title}</span>
+                  <span className="text-xs text-muted-foreground">{task.ownerLabel ?? "no owner"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <p className="mt-6 text-xs leading-5 text-muted-foreground">
+      <p className="mt-12 text-xs leading-5 text-muted-foreground">
         {data.disclaimer} A simulation does not prove that a real account can be recovered.
       </p>
     </div>
   );
 }
 
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "warn" | undefined;
-}) {
+function LedgerLine({ row, onOpen }: { row: LedgerRow; onOpen: () => void }) {
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-card px-4 py-3">
-      <dt className="order-2 mt-1 text-xs text-muted-foreground">{label}</dt>
-      <dd
-        className={
-          tone === "warn"
-            ? "order-1 text-2xl font-semibold tabular-nums text-status-at-risk"
-            : "order-1 text-2xl font-semibold tabular-nums text-foreground"
-        }
+    <tr className="cursor-pointer border-b border-border hover:bg-accent/40" onClick={onOpen}>
+      <td className="py-2.5 pe-4">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+          className="text-left font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {row.name}
+        </button>
+        <span className="ms-2 font-mono text-[11px] text-muted-foreground">{row.criticality}</span>
+      </td>
+      <td className="py-2.5 pe-4">
+        <Ways mode={row.accessMode} count={row.accessWays} />
+      </td>
+      <td
+        className="hidden max-w-56 truncate py-2.5 pe-4 text-muted-foreground md:table-cell"
+        title={row.through.join(", ") || undefined}
       >
-        {value}
-      </dd>
-    </div>
+        {row.through.length > 0 ? row.through.join(" · ") : <span className="text-muted-foreground/60">—</span>}
+      </td>
+      <td className="py-2.5 pe-4">
+        <Ways mode={row.recoveryMode} count={row.recoveryWays} />
+      </td>
+      <td className="py-2.5 text-right">
+        {row.worst ? (
+          <span className="inline-flex items-center gap-1.5">
+            <StatusBadge status={row.worst.status} />
+            {row.worst.status !== "available" && row.worst.capability !== "access" ? (
+              <span className="font-mono text-[11px] text-muted-foreground">{row.worst.capability}</span>
+            ) : null}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">not run</span>
+        )}
+      </td>
+    </tr>
   );
 }
 
-function WeakSpot({
-  workspaceId,
-  item,
-  note,
-}: {
-  workspaceId: string;
-  item: { resourceId: string; label: string };
-  note: string;
-}) {
+function Ways({ mode, count }: { mode: LedgerRow["accessMode"]; count: number | null }) {
+  if (mode === "missing") return <span className="text-muted-foreground/60">—</span>;
+  if (mode === "independent") {
+    return <span className="font-mono text-xs text-muted-foreground">independent</span>;
+  }
+  if (mode === "unknown") {
+    return <span className="font-mono text-xs text-status-unknown">not recorded</span>;
+  }
+  if (!count) return <span className="font-mono text-xs text-status-blocked">no route</span>;
   return (
-    <li>
-      <Link
-        to={`/map?workspace=${workspaceId}&resource=${item.resourceId}`}
-        className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-      >
-        <span className="truncate text-foreground">{item.label}</span>
-        <span className="shrink-0 text-xs text-muted-foreground">{note}</span>
-      </Link>
-    </li>
+    <span aria-label={`${count} recorded ${count === 1 ? "route" : "routes"}`}>
+      <Dots count={count} warn={count === 1} />
+    </span>
   );
+}
+
+function Dots({ count, warn = false }: { count: number; warn?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("font-mono text-xs tracking-[0.2em]", warn ? "text-status-at-risk" : "text-foreground")}
+    >
+      {"●".repeat(Math.min(count, 6))}
+    </span>
+  );
+}
+
+function formatStamp(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function askToMapResource() {

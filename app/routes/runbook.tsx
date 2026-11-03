@@ -1,14 +1,17 @@
 import { actionErrorMessage, useActionQuery } from "@agent-native/core/client/hooks";
-import { IconAlertTriangle, IconDownload, IconPrinter } from "@tabler/icons-react";
+import { IconDownload, IconPrinter } from "@tabler/icons-react";
 import { Link, useSearchParams } from "react-router";
 
 import { CAPABILITY_LABEL, KIND_LABEL } from "@/components/map/map-model";
-import { ConfidenceTag, StatusBadge } from "@/components/map/status";
+import { StatusBadge } from "@/components/map/status";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { APP_TITLE } from "@/lib/app-config";
 import { cn } from "@/lib/utils";
 import type { Runbook } from "@shared/runbook";
+
+type System = Runbook["systems"][number];
+type CapabilityEntry = System["capabilities"][number];
 
 export function meta() {
   return [{ title: `Runbook — ${APP_TITLE}` }];
@@ -25,16 +28,17 @@ export default function RunbookRoute() {
 
   if (runbook.isPending) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-8 py-10">
+        <Skeleton className="h-4 w-48" />
         <Skeleton className="h-8 w-72" />
-        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
   }
   if (runbook.isError) {
     return (
-      <div className="mx-auto max-w-xl px-6 py-16">
+      <div className="mx-auto max-w-xl px-8 py-16">
         <p className="text-sm text-foreground">
           {actionErrorMessage(runbook.error) ?? "The runbook could not be built."}
         </p>
@@ -53,113 +57,76 @@ export default function RunbookRoute() {
 }
 
 function RunbookDocument({ book }: { book: Runbook }) {
-  const generated = new Date(book.generatedAt).toLocaleString();
+  const loopWarnings = book.simulation?.warnings.filter((item) => /loop/i.test(item)) ?? [];
+  const openOwnerGaps = book.gaps.filter((gap) => /no recorded owner/.test(gap.text)).length;
+  const singleRoutes = book.systems
+    .flatMap((system) => system.capabilities)
+    .filter((capability) => capability.note?.startsWith("Only one")).length;
   return (
-    <article data-print-root className="mx-auto w-full max-w-3xl px-6 py-8 print:max-w-none print:px-0 print:py-0">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="inline-flex items-center rounded-md bg-status-blocked-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-status-blocked">
-            Confidential · internal use only
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-            Emergency access runbook
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {book.workspace.name}
-            {book.workspace.fictional ? " (fictional sample)" : ""} · generated {generated} from the recorded map
-          </p>
-        </div>
-        <div className="flex gap-2 print:hidden">
-          <Button variant="outline" onClick={() => downloadMarkdown(book)}>
+    <article
+      data-print-root
+      className="mx-auto w-full max-w-3xl px-8 py-10 text-foreground print:max-w-none print:px-0 print:py-0"
+    >
+      <div className="flex items-baseline justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.08em]">
+        <span className="text-muted-foreground">Emergency access runbook</span>
+        <span className="text-status-blocked">Confidential · internal</span>
+      </div>
+
+      <header className="mt-3 flex flex-wrap items-end justify-between gap-4 border-b-2 border-foreground pb-4">
+        <h1 className="text-3xl font-semibold tracking-tight">{book.workspace.name}</h1>
+        <div className="flex gap-1 print:hidden">
+          <Button variant="ghost" size="sm" onClick={() => downloadMarkdown(book)}>
             <IconDownload className="size-4" />
             Markdown
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="ghost" size="sm" onClick={() => window.print()}>
             <IconPrinter className="size-4" />
-            Print or PDF
+            Print
           </Button>
         </div>
       </header>
 
-      <p className="mt-5 flex gap-2 rounded-lg bg-status-at-risk-soft px-3 py-2.5 text-sm leading-6 text-status-at-risk">
-        <IconAlertTriangle className="mt-1 size-4 shrink-0" strokeWidth={1.8} />
-        {book.testing}
-      </p>
+      <dl className="mt-4 grid grid-cols-[7rem_1fr] gap-x-4 gap-y-1 font-mono text-xs">
+        <dt className="text-muted-foreground">Source</dt>
+        <dd>recorded recovery map{book.workspace.fictional ? " · fictional sample team" : ""}</dd>
+        <dt className="text-muted-foreground">Generated</dt>
+        <dd>{stamp(book.generatedAt)}</dd>
+        <dt className="text-muted-foreground">Run</dt>
+        <dd>
+          {book.simulation
+            ? `${book.simulation.name} · ${stamp(book.simulation.createdAt)}`
+            : "none"}
+        </dd>
+        <dt className="text-muted-foreground">Testing</dt>
+        <dd className="text-status-at-risk">documented, not tested — no recovery test results recorded</dd>
+      </dl>
 
-      <Section title="Critical systems and ways in">
-        <div className="flex flex-col gap-4">
-          {book.systems.map((system) => (
-            <div key={system.resourceId} className="break-inside-avoid rounded-xl border border-border bg-card p-4 print:rounded-none print:border-x-0 print:border-t-0 print:px-0">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-base font-semibold text-foreground">{system.name}</h3>
-                <p className="text-xs text-muted-foreground">
-                  {KIND_LABEL[system.kind]} · {system.criticality} · owner:{" "}
-                  {system.owner ?? <span className="font-medium text-status-at-risk">not recorded</span>}
-                </p>
-              </div>
-              {system.description ? (
-                <p className="mt-1 text-sm leading-6 text-foreground/85">{system.description}</p>
-              ) : null}
-              {system.capabilities.length === 0 ? (
-                <p className="mt-2 text-sm text-status-unknown">No capability is recorded.</p>
-              ) : (
-                <dl className="mt-3 flex flex-col gap-3">
-                  {system.capabilities.map((capability) => (
-                    <div key={capability.capability}>
-                      <dt className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
-                        {CAPABILITY_LABEL[capability.capability]}
-                        <span className="text-xs font-normal text-muted-foreground">{capability.mode}</span>
-                        <ConfidenceTag confidence={capability.confidence} />
-                        {capability.status ? <StatusBadge status={capability.status} /> : null}
-                      </dt>
-                      <dd className="mt-1 text-sm leading-6 text-foreground/85">
-                        {capability.mode === "independent" ? (
-                          <p className="text-muted-foreground">Independent: no prerequisite is recorded.</p>
-                        ) : null}
-                        {capability.routes.length > 0 ? (
-                          <ol className="flex flex-col gap-0.5">
-                            {capability.routes.map((route, index) => (
-                              <li key={`${route.label}-${index}`}>
-                                {index > 0 ? <span className="me-1 font-medium text-brand">or</span> : null}
-                                {route.label}
-                                <span className="text-muted-foreground">
-                                  {" — needs "}
-                                  {route.prerequisites.length === 0
-                                    ? "no prerequisite recorded"
-                                    : route.prerequisites
-                                        .map(
-                                          (item) =>
-                                            `${item.name} ${item.capability}${item.confidence === "verified" ? "" : ` (${item.confidence})`}`,
-                                        )
-                                        .join(route.requirementMode === "ALL" ? " and " : " or ")}
-                                </span>
-                              </li>
-                            ))}
-                          </ol>
-                        ) : null}
-                        {capability.note ? (
-                          <p className="mt-0.5 text-status-at-risk">{capability.note}</p>
-                        ) : null}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </div>
+      <Section number="1" title="Systems and ways in">
+        <ol className="border-t border-border">
+          {book.systems.map((system, index) => (
+            <SystemEntry key={system.resourceId} system={system} index={index + 1} workspaceId={book.workspace.id} />
           ))}
-        </div>
+        </ol>
       </Section>
 
-      <Section title="Gaps in the record">
-        {book.gaps.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No gaps found in the recorded map.</p>
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm text-foreground/85">
+      <Section number="2" title="Gaps">
+        <p className="text-sm leading-6">
+          {singleRoutes} {singleRoutes === 1 ? "capability relies" : "capabilities rely"} on a single recorded route
+          {" · "}
+          {openOwnerGaps} key {openOwnerGaps === 1 ? "system has" : "systems have"} no owner
+          {" · "}
+          {loopWarnings.length} recovery {loopWarnings.length === 1 ? "loop" : "loops"}
+        </p>
+        {book.gaps.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
             {book.gaps.map((gap, index) => (
               <li key={`${gap.text}-${index}`} className="flex gap-2">
-                <span aria-hidden className="text-status-at-risk">•</span>
+                <span aria-hidden className="font-mono">–</span>
                 {gap.resourceId ? (
-                  <Link className="hover:underline print:no-underline" to={`/map?workspace=${book.workspace.id}&resource=${gap.resourceId}`}>
+                  <Link
+                    to={`/map?workspace=${book.workspace.id}&resource=${gap.resourceId}`}
+                    className="hover:text-foreground hover:underline print:no-underline"
+                  >
                     {gap.text}
                   </Link>
                 ) : (
@@ -168,74 +135,237 @@ function RunbookDocument({ book }: { book: Runbook }) {
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
       </Section>
 
-      <Section title="Latest simulation">
+      <Section number="3" title="Latest run">
         {!book.simulation ? (
-          <p className="text-sm text-muted-foreground">No simulation has been run.</p>
+          <p className="text-sm text-muted-foreground">No scenario has been run.</p>
         ) : (
-          <div className="text-sm leading-6 text-foreground/85">
-            <p className="font-medium text-foreground">
-              {book.simulation.name}{" "}
-              <span className="font-normal text-muted-foreground">
-                · {new Date(book.simulation.createdAt).toLocaleString()}
+          <dl className="grid grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Scenario</dt>
+            <dd>{book.simulation.name}</dd>
+            <dt className="text-muted-foreground">Assumed unavailable</dt>
+            <dd>{book.simulation.assumedUnavailable.join(", ") || "none recorded"}</dd>
+            <dt className="text-muted-foreground">Result</dt>
+            <dd className="font-mono text-xs leading-6">
+              <span className={book.simulation.summary.blocked ? "text-status-blocked" : undefined}>
+                {book.simulation.summary.blocked} blocked
               </span>
-            </p>
-            <p>Assumed unavailable: {book.simulation.assumedUnavailable.join(", ") || "none recorded"}.</p>
-            <p>
-              Per capability in the model: {book.simulation.summary.blocked} blocked,{" "}
-              {book.simulation.summary.at_risk} at risk, {book.simulation.summary.unknown} unknown,{" "}
-              {book.simulation.summary.available} available.
-            </p>
+              {" · "}
+              {book.simulation.summary.at_risk} at risk · {book.simulation.summary.unknown} unknown ·{" "}
+              {book.simulation.summary.available} available
+              <span className="font-sans text-muted-foreground"> — per capability, in the model</span>
+            </dd>
             {book.simulation.blocked.length > 0 ? (
-              <p>Blocked: {book.simulation.blocked.join(", ")}.</p>
+              <>
+                <dt className="text-muted-foreground">Blocked</dt>
+                <dd>{book.simulation.blocked.join(", ")}</dd>
+              </>
             ) : null}
-            {book.simulation.warnings.map((warning) => (
-              <p key={warning} className="mt-1 text-status-at-risk">{warning}</p>
-            ))}
-          </div>
+            {book.simulation.warnings.length > 0 ? (
+              <>
+                <dt className="text-muted-foreground">Warnings</dt>
+                <dd className="space-y-1">
+                  {book.simulation.warnings.map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                </dd>
+              </>
+            ) : null}
+          </dl>
         )}
       </Section>
 
-      <Section title="Open remediation tasks">
+      <Section number="4" title="Open tasks">
         {book.tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No open tasks.</p>
         ) : (
-          <ul className="flex flex-col gap-2 text-sm">
+          <ul className="border-t border-border text-sm">
             {book.tasks.map((task) => (
-              <li key={task.id} className="break-inside-avoid">
-                <p className="font-medium text-foreground">{task.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {[task.priority, task.status.replace("_", " "), task.owner ? `owner: ${task.owner}` : null, task.resource]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {task.reason ? <p className="text-foreground/85">{task.reason}</p> : null}
+              <li key={task.id} className="grid grid-cols-[4.5rem_1fr_auto] items-baseline gap-4 border-b border-border py-2">
+                <span
+                  className={cn(
+                    "font-mono text-xs",
+                    task.priority === "urgent"
+                      ? "text-status-blocked"
+                      : task.priority === "high"
+                        ? "text-status-at-risk"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  {task.priority}
+                </span>
+                <span>
+                  {task.title}
+                  {task.reason ? (
+                    <span className="block text-xs text-muted-foreground">{task.reason}</span>
+                  ) : null}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {task.status.replace("_", " ")}
+                  {task.owner ? ` · ${task.owner}` : ""}
+                </span>
               </li>
             ))}
           </ul>
         )}
       </Section>
 
-      <Section title="Testing history">
+      <Section number="5" title="Testing history">
         <p className="text-sm text-muted-foreground">{book.testing}</p>
       </Section>
 
-      <footer className="mt-10 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
-        {book.disclaimer} A simulation does not prove a real account can be recovered. This runbook contains no credentials.
+      <footer className="mt-12 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
+        {book.disclaimer} A simulation does not prove a real account can be recovered. This document
+        contains no credentials.
       </footer>
     </article>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function SystemEntry({
+  system,
+  index,
+  workspaceId,
+}: {
+  system: System;
+  index: number;
+  workspaceId: string;
+}) {
   return (
-    <section className={cn("mt-8 break-inside-avoid-page")}>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+    <li className="grid break-inside-avoid grid-cols-[2.25rem_1fr] border-b border-border py-5">
+      <span className="font-mono text-sm text-muted-foreground tabular-nums">{String(index).padStart(2, "0")}</span>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h3 className="text-base font-semibold">
+            <Link
+              to={`/map?workspace=${workspaceId}&resource=${system.resourceId}`}
+              className="hover:underline print:no-underline"
+            >
+              {system.name}
+            </Link>
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {KIND_LABEL[system.kind]} · {system.criticality} ·{" "}
+            {system.owner ? (
+              `owner ${system.owner}`
+            ) : (
+              <span className="text-status-at-risk">owner not recorded</span>
+            )}
+          </p>
+        </div>
+        {system.description ? (
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{system.description}</p>
+        ) : null}
+        {system.capabilities.length === 0 ? (
+          <p className="mt-3 text-sm text-status-unknown">No access, recovery, or administration is recorded.</p>
+        ) : (
+          <div className="mt-3 space-y-4">
+            {system.capabilities.map((capability) => (
+              <CapabilityBlock key={capability.capability} capability={capability} />
+            ))}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function CapabilityBlock({ capability }: { capability: CapabilityEntry }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-4">
+        <h4 className="text-sm font-medium">
+          {CAPABILITY_LABEL[capability.capability]}
+          <span className="ms-2 font-mono text-[11px] font-normal text-muted-foreground">
+            {capability.mode}
+            {capability.confidence !== "verified" ? ` · ${capability.confidence}` : ""}
+          </span>
+        </h4>
+        {capability.status ? <StatusBadge status={capability.status} /> : null}
+      </div>
+      {capability.mode === "independent" ? (
+        <p className="mt-1 text-sm text-muted-foreground">Independent. Nothing else is needed.</p>
+      ) : capability.routes.length > 0 ? (
+        <table className="mt-1.5 w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-6" />
+            <col className="w-[46%]" />
+            <col />
+            <col className="w-20" />
+          </colgroup>
+          <tbody>
+            {capability.routes.map((route, index) => (
+              <tr key={`${route.label}-${index}`} className="align-baseline">
+                <td className="py-0.5 font-mono text-xs text-muted-foreground">
+                  {String.fromCharCode(65 + index)}
+                </td>
+                <td className="py-0.5 pe-4">{route.label}</td>
+                <td className="py-0.5 pe-4 text-muted-foreground">
+                  {route.prerequisites.length === 0
+                    ? "no prerequisite recorded"
+                    : route.prerequisites
+                        .map((item) =>
+                          item.capability === "access" ? item.name : `${item.name} (${item.capability})`,
+                        )
+                        .join(route.requirementMode === "ALL" ? " + " : " or ")}
+                </td>
+                <td
+                  className={cn(
+                    "py-0.5 text-right font-mono text-[11px]",
+                    route.prerequisites.every((item) => item.confidence === "verified")
+                      ? "text-muted-foreground"
+                      : "text-status-at-risk",
+                  )}
+                >
+                  {route.prerequisites.every((item) => item.confidence === "verified")
+                    ? "verified"
+                    : route.prerequisites.find((item) => item.confidence !== "verified")?.confidence}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+      {capability.note ? (
+        <p className="mt-1 ps-6 font-mono text-[11px] text-status-at-risk">↳ {noteText(capability.note)}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function noteText(note: string) {
+  if (note.startsWith("Only one")) return "only recorded route — no alternative modelled";
+  if (note.startsWith("Dependent")) return "no route recorded";
+  return note.toLowerCase().replace(/\.$/, "");
+}
+
+function Section({
+  number,
+  title,
+  children,
+}: {
+  number: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-10">
+      <h2 className="mb-3 flex items-baseline gap-3 text-base font-semibold">
+        <span className="font-mono text-sm font-normal text-muted-foreground">{number}</span>
+        {title}
+      </h2>
       {children}
     </section>
   );
+}
+
+function stamp(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function downloadMarkdown(book: Runbook) {
