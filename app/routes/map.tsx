@@ -1,9 +1,10 @@
+import { sendToAgentChat } from "@agent-native/core/client/agent-chat";
 import {
   actionErrorMessage,
   useActionMutation,
   useActionQuery,
 } from "@agent-native/core/client/hooks";
-import { IconKey, IconRoute } from "@tabler/icons-react";
+import { IconKey, IconMessage, IconRoute } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -373,8 +374,29 @@ function SimulationSummary({ simulation }: { simulation: SimulationRecord }) {
         resource to mark the causal path. A recovery status does not change
         access.
       </p>
+      <Button
+        variant="outline"
+        className="mt-3 w-fit"
+        onClick={() => askWhatCausedThis(simulation)}
+      >
+        <IconMessage className="size-4" strokeWidth={1.6} />
+        Ask what caused this
+      </Button>
     </div>
   );
+}
+
+function askWhatCausedThis(simulation: SimulationRecord) {
+  sendToAgentChat({
+    message: "What caused this impact?",
+    context: JSON.stringify({
+      workspaceId: simulation.workspaceId,
+      simulationId: simulation.id,
+    }),
+    contextLabel: simulation.name,
+    submit: true,
+    openSidebar: true,
+  });
 }
 
 function StatusWord({ status }: { status: SimulationRecord["impacts"][number]["status"] }) {

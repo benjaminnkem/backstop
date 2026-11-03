@@ -38,9 +38,9 @@ Recovery map at `/map`. Chat stays at `/chat`. Manual mapping only: no provider 
 
 One Northstar sample per team (`org:<id>` or `user:<email>`). `seed-northstar` is idempotent. Domain tables are `recovery_*`.
 
-`navigation.view` is `map` on `/map`. `workspace`, `resource`, and `simulation` query params are `navigation.workspaceId`, `navigation.selectedResourceId`, and `navigation.simulationId`.
+`/map` sets `navigation.view` to `map`. The `workspace`, `resource`, and `simulation` params are those ids.
 
-Status is per capability. `blocked` means every recorded route is blocked. A recovery cycle warns and is not a lockout. Saved runs stay as they were when the map changes.
+Status is per capability. `blocked` means every recorded route is blocked. A recovery cycle warns and is not a lockout. Saved runs stay when the map changes. Ask what caused this sends the visible run id. Call `get-simulation` before explaining.
 
 | Action | Purpose |
 | --- | --- |
