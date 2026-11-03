@@ -67,6 +67,7 @@ const messages = {
     home: "Overview",
     map: "Dependency map",
     remediation: "Remediation",
+    runbook: "Runbook",
     navigation: "Navigation",
     navigationDescription: "Main navigation",
     observability: "Observability",

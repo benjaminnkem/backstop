@@ -16,6 +16,7 @@ import { AgentNativeIcon } from "@agent-native/toolkit/app/shared/AgentNativeIco
 import {
   IconChecklist,
   IconEdit,
+  IconFileText,
   IconHome,
   IconRoute,
   IconLayoutSidebarLeftCollapse,
@@ -464,6 +465,12 @@ export function Sidebar({
           to="/remediation"
           label={t("navigation.remediation")}
           icon={IconChecklist}
+        />
+        <DomainNavLink
+          collapsed={collapsed}
+          to="/runbook"
+          label={t("navigation.runbook")}
+          icon={IconFileText}
         />
         <ChatThreadsSection collapsed={collapsed} />
       </nav>

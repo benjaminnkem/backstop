@@ -90,6 +90,7 @@ function viewForPath(pathname: string): string {
   if (pathname === HOME_PATH) return "home";
   if (pathname === "/map" || pathname.startsWith("/map/")) return "map";
   if (pathname === "/remediation") return "remediation";
+  if (pathname === "/runbook") return "runbook";
   if (pathname.startsWith("/database")) return "database";
   if (pathname.startsWith("/extensions")) return "extensions";
   if (pathname.startsWith("/observability")) return "observability";
@@ -112,6 +113,8 @@ function pathForView(view?: string): string {
       return "/map";
     case "remediation":
       return "/remediation";
+    case "runbook":
+      return "/runbook";
     case "database":
       return "/database";
     case "extensions":
@@ -131,7 +134,9 @@ function pathForView(view?: string): string {
 
 export function pathForCommand(command: any): string {
   const path = pathForView(command?.view);
-  if (command?.view === "map" || command?.view === "remediation") {
+  if (command?.view === "map" ||
+    command?.view === "remediation" ||
+    command?.view === "runbook") {
     const params = new URLSearchParams();
     if (typeof command.workspaceId === "string" && command.workspaceId) {
       params.set("workspace", command.workspaceId);

@@ -55,6 +55,48 @@
   --color-path: hsl(var(--bs-path));
 }
 
+/* Printing a runbook shows only the document, on light paper, across pages. */
+@media print {
+  :root,
+  .dark {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --muted-foreground: 0 0% 35%;
+    --border: 0 0% 85%;
+    --bs-ink: 165 45% 15%;
+    --bs-brand: 163 69% 27%;
+    --bs-blocked: 0 58% 39%;
+    --bs-blocked-soft: 0 70% 96%;
+    --bs-at-risk: 38 100% 27%;
+    --bs-at-risk-soft: 40 90% 94%;
+    --bs-available: 163 69% 27%;
+    --bs-available-soft: 158 40% 94%;
+    --bs-unknown: 165 5% 38%;
+    --bs-unknown-soft: 165 6% 93%;
+  }
+  html,
+  body,
+  .agent-layout-shell,
+  .agent-layout-main-surface,
+  .agent-native-app-main {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  body:has([data-print-root]) * {
+    visibility: hidden;
+  }
+  body:has([data-print-root]) [data-print-root],
+  body:has([data-print-root]) [data-print-root] * {
+    visibility: visible;
+  }
+  [data-print-root] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+}
+
 /* React Flow follows the app theme instead of its own defaults. */
 .backstop-flow {
   --xy-background-color: hsl(var(--bs-canvas));

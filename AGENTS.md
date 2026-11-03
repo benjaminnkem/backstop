@@ -38,7 +38,7 @@ Recovery map at `/map`. Chat stays at `/chat`. No provider OAuth, stored credent
 
 One Northstar sample per team (`org:<id>` or `user:<email>`). `seed-northstar` is idempotent. Domain tables are `recovery_*`.
 
-Screens: `/home` is the Overview (`home`), `/map` the graph workspace (`map`), `/remediation` the task table (`remediation`). The `workspace`, `resource`, and `simulation` params are those ids; `/map` also takes `capability` to focus one causal path, and `/remediation` takes `task`. Scenario presets live in `shared/scenarios.ts` and only appear when their resource exists. Map UI uses `bs-*` tokens in `app/global.css`; do not hardcode colours.
+Screens: `/home` is the Overview (`home`), `/map` the graph workspace (`map`), `/remediation` the task table (`remediation`), `/runbook` the emergency runbook (`runbook`). The `workspace`, `resource`, and `simulation` params are those ids; `/map` also takes `capability` to focus one causal path, and `/remediation` takes `task`. Scenario presets live in `shared/scenarios.ts` and only appear when their resource exists. Map UI uses `bs-*` tokens in `app/global.css`; do not hardcode colours.
 
 Status is per capability. `blocked` means every recorded route is blocked. A recovery cycle warns and is not a lockout. Saved runs stay when the map changes. Ask what caused this sends the visible run id. Call `get-simulation` before explaining.
 
@@ -54,4 +54,5 @@ Status is per capability. `blocked` means every recorded route is blocked. A rec
 | `list-remediation-tasks` | Read internal tasks. They do not change the map. |
 | `create-remediation-task` | Record a task only when the user asks. |
 | `update-remediation-task` | Change status, priority, or label. |
+| `get-runbook` | Build the runbook from saved records, with Markdown. |
 | `navigate` | Open `map` with workspace, resource, and simulation ids. |
