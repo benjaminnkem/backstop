@@ -1,4 +1,5 @@
 import { defineAction, defineActionErrors } from "@agent-native/core/action";
+import { assertAccess } from "@agent-native/core/sharing";
 import { buildDeepLink } from "@agent-native/core/server";
 import { z } from "zod";
 
@@ -48,6 +49,8 @@ export default defineAction({
       throw new Error("Not signed in");
     }
     try {
+      const workspaceId = input.workspaceId;
+      if (workspaceId) await assertAccess("recovery-workspace", workspaceId, "editor");
       const saved = await recordRecoveryTest(
         { userEmail, orgId: ctx?.orgId ?? null },
         { fromHumanSurface: ctx?.caller === "frontend", humanConfirmed: humanConfirmed === true },

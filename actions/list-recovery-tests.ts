@@ -1,4 +1,5 @@
 import { defineAction, defineActionErrors } from "@agent-native/core/action";
+import { assertAccess } from "@agent-native/core/sharing";
 import { z } from "zod";
 
 import { listRecoveryTestsResultSchema } from "../shared/recovery-tests.js";
@@ -23,6 +24,8 @@ export default defineAction({
       throw new Error("Not signed in");
     }
     try {
+      const workspaceId = args.workspaceId;
+      if (workspaceId) await assertAccess("recovery-workspace", workspaceId, "viewer");
       return await listRecoveryTests(args);
     } catch (error) {
       const failure = recoveryTestFailure(error);
