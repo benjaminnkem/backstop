@@ -4,6 +4,8 @@
 
 You need a Netlify account, a persistent PostgreSQL database (Neon's free tier works), and Node.js 22.22+.
 
+**Shortcut:** `pnpm deploy:netlify` does steps 2–4 in one go. It asks for the connection string without showing it, generates the auth secret on first run, and deploys. The manual steps are below.
+
 1. **Database.** Create a Postgres database and copy its connection string.
    ```bash
    export DATABASE_URL='postgres://…'

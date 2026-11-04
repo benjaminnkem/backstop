@@ -14,7 +14,8 @@
     "script": "agent-native script",
     "test": "vitest --run --passWithNoTests",
     "agent-native:doctor": "agent-native doctor",
-    "check:isolation": "node scripts/check-isolation.mjs"
+    "check:isolation": "node scripts/check-isolation.mjs",
+    "deploy:netlify": "bash scripts/deploy-netlify.sh"
   },
   "dependencies": {
     "@agent-native/agentkit": "^0.222.2",
