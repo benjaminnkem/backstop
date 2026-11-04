@@ -31,8 +31,12 @@ export function ScenarioPanel({
   onSelectImpact,
   onAsk,
   rail,
+  headerAction,
+  footer,
 }: {
   rail: boolean;
+  headerAction?: React.ReactNode;
+  footer?: React.ReactNode;
   data: WorkspaceMap;
   indexed: Map<string, IndexedCapability[]>;
   scenarios: ResolvedScenario[];
@@ -89,9 +93,12 @@ export function ScenarioPanel({
       )}
     >
       <div className="border-b border-border px-4 py-4">
-        <h1 className="text-lg font-semibold tracking-tight text-foreground">
-          {data.workspace?.name}
-        </h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            {data.workspace?.name}
+          </h1>
+          {headerAction}
+        </div>
         {data.workspace?.fictional ? (
           <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">fictional sample</p>
         ) : null}
@@ -258,6 +265,7 @@ export function ScenarioPanel({
         </p>
       )}
 
+      {footer}
       <p className="mt-auto border-t border-border px-4 py-3 text-[11px] leading-4 text-muted-foreground">
         {data.disclaimer} Statuses describe the model, not a live provider.
       </p>

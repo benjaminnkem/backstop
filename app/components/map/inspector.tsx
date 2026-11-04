@@ -58,6 +58,29 @@ export function Inspector({
 }) {
   const capabilities = indexed.get(resource.id) ?? [];
   const tasks = useActionQuery("list-remediation-tasks", { workspaceId });
+  const removeRoute = useActionMutation("remove-dependency-route", {
+    onSuccess: (result) => toast.success(`Removed “${result.label}”. Run the scenario again to see the effect.`),
+    onError: (error) => toast.error(actionErrorMessage(error) ?? "The route was not removed."),
+  });
+  const archive = useActionMutation("set-resource-archived", {
+    onSuccess: (result) => {
+      toast.success(
+        result.dependentRoutes > 0
+          ? `Archived ${result.name}. ${result.dependentRoutes} route${result.dependentRoutes === 1 ? " needs" : "s need"} it and will evaluate as unknown.`
+          : `Archived ${result.name}.`,
+      );
+      onClose();
+    },
+    onError: (error) => toast.error(actionErrorMessage(error) ?? "The resource was not archived."),
+  });
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const dependentCount = new Set(
+    [...indexed.values()]
+      .flat()
+      .flatMap((capability) => capability.groups)
+      .filter((group) => group.links.some((link) => link.prerequisiteResourceId === resource.id))
+      .map((group) => group.id),
+  ).size;
   const resourceTasks = (tasks.data?.tasks ?? []).filter(
     (task) =>
       task.resourceId === resource.id &&
@@ -105,6 +128,9 @@ export function Inspector({
                 )
               }
               onSelect={onSelect}
+              onRemoveRoute={async (groupId) => {
+                await removeRoute.mutateAsync({ workspaceId, groupId });
+              }}
             />
           ))
         )}
@@ -150,6 +176,42 @@ export function Inspector({
             </ul>
           )}
         </section>
+
+        <section className="border-t border-border px-4 py-4">
+          {confirmArchive ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs leading-5 text-foreground">
+                Archive {resource.name}? It leaves the map, the runbook and future runs.
+                {dependentCount > 0
+                  ? ` ${dependentCount} route${dependentCount === 1 ? " needs" : "s need"} it and will evaluate as unknown.`
+                  : ""}{" "}
+                Saved runs stay as they are. You can restore it later.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline-destructive"
+                  disabled={archive.isPending}
+                  onClick={() => archive.mutate({ workspaceId, resourceId: resource.id, archived: true })}
+                >
+                  {archive.isPending ? "Archiving…" : "Archive"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmArchive(false)}>
+                  Keep it
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => setConfirmArchive(true)}
+            >
+              Archive resource
+            </Button>
+          )}
+        </section>
       </div>
     </div>
   );
@@ -161,12 +223,14 @@ function CapabilitySection({
   focused,
   onFocus,
   onSelect,
+  onRemoveRoute,
 }: {
   capability: IndexedCapability;
   impact: Impact | null;
   focused: boolean;
   onFocus: () => void;
   onSelect: (resourceId: string) => void;
+  onRemoveRoute: (groupId: string) => Promise<void>;
 }) {
   return (
     <section className="border-b border-border px-4 py-4">
@@ -235,12 +299,15 @@ function CapabilitySection({
                 <p className="my-1 ps-2.5 font-mono text-[11px] text-muted-foreground">or</p>
               ) : null}
               <div className="rounded-lg border border-border bg-canvas px-2.5 py-2">
-                <p className="text-xs text-foreground">
-                  <span className="me-2 font-mono text-[10px] text-muted-foreground">
-                    {group.requirementMode}
-                  </span>
-                  {group.label}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs text-foreground">
+                    <span className="me-2 font-mono text-[10px] text-muted-foreground">
+                      {group.requirementMode}
+                    </span>
+                    {group.label}
+                  </p>
+                  <RemoveRoute groupId={group.id} label={group.label} onRemove={onRemoveRoute} />
+                </div>
                 <ul className="mt-1.5 flex flex-col gap-1">
                   {group.links.map((link) => (
                     <li key={link.id} className="flex items-center justify-between gap-2 text-xs">
@@ -262,6 +329,56 @@ function CapabilitySection({
         </ol>
       )}
     </section>
+  );
+}
+
+function RemoveRoute({
+  groupId,
+  label,
+  onRemove,
+}: {
+  groupId: string;
+  label: string;
+  onRemove: (groupId: string) => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [pending, setPending] = useState(false);
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        aria-label={`Remove route ${label}`}
+        className="shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
+        onClick={() => setConfirming(true)}
+      >
+        Remove
+      </button>
+    );
+  }
+  return (
+    <span className="flex shrink-0 items-center gap-2 text-[11px]">
+      <button
+        type="button"
+        disabled={pending}
+        className="font-medium text-status-blocked hover:underline"
+        onClick={async () => {
+          setPending(true);
+          try {
+            await onRemove(groupId);
+          } catch {
+            // The mutation's own error handler reports the failure.
+          } finally {
+            setPending(false);
+            setConfirming(false);
+          }
+        }}
+      >
+        {pending ? "Removing…" : "Confirm"}
+      </button>
+      <button type="button" className="text-muted-foreground" onClick={() => setConfirming(false)}>
+        Cancel
+      </button>
+    </span>
   );
 }
 

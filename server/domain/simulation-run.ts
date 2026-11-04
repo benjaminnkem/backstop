@@ -223,6 +223,7 @@ async function loadGraph(workspaceId: string) {
         id: recoveryResources.id,
         slug: recoveryResources.slug,
         name: recoveryResources.name,
+        status: recoveryResources.status,
       })
       .from(recoveryResources)
       .where(eq(recoveryResources.workspaceId, workspaceId))
@@ -260,17 +261,23 @@ async function loadGraph(workspaceId: string) {
       .where(eq(recoveryDependencyLinks.workspaceId, workspaceId))
       .limit(1000),
   ]);
+  // An archived resource leaves the model. A route that still needs it has a
+  // missing prerequisite, which evaluates as unknown, never as available.
+  const archived = new Set(
+    resources.filter((resource) => resource.status === "archived").map((resource) => resource.id),
+  );
+  const active = resources.filter((resource) => !archived.has(resource.id));
   return {
-    resources,
+    resources: active,
     names: new Map(resources.map((resource) => [resource.id, resource.name])),
     slugs: new Map(resources.map((resource) => [resource.id, resource.slug])),
-    capabilities: capabilities.map((capability) => ({
+    capabilities: capabilities.filter((capability) => !archived.has(capability.resourceId)).map((capability) => ({
       resourceId: capability.resourceId,
       capability: capability.capability as Capability,
       mode: capability.mode as "independent" | "dependent" | "unknown",
       confidence: capability.confidence as "verified" | "assumed" | "unknown",
     })),
-    groups: groups.map((group) => ({
+    groups: groups.filter((group) => !archived.has(group.resourceId)).map((group) => ({
       id: group.id,
       resourceId: group.resourceId,
       capability: group.capability as Capability,

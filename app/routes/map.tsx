@@ -4,12 +4,13 @@ import {
   useActionMutation,
   useActionQuery,
 } from "@agent-native/core/client/hooks";
-import { IconKey } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo } from "react";
+import { IconKey, IconPlus } from "@tabler/icons-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { DependencyGraph, GraphLegend } from "@/components/map/dependency-graph";
+import { AddResourceDialog } from "@/components/map/add-resource-dialog";
 import { Inspector } from "@/components/map/inspector";
 import {
   buildGraph,
@@ -155,6 +156,7 @@ function MapWorkspace({
   const parsedCapability = capabilitySchema.safeParse(params.get("capability"));
   const focusCapability = parsedCapability.success ? parsedCapability.data : null;
   const [containerRef, width] = useElementWidth<HTMLDivElement>();
+  const [adding, setAdding] = useState(false);
   const wide = width === null || width >= CANVAS_MIN_WIDTH;
 
   const indexed = useMemo(() => indexMap(data), [data]);
@@ -227,8 +229,20 @@ function MapWorkspace({
     />
   ) : null;
 
+  const archivedResources = data.resources.filter((item) => item.status === "archived");
   const panel = (
     <ScenarioPanel
+      headerAction={
+        <Button variant="ghost" size="xs" onClick={() => setAdding(true)}>
+          <IconPlus className="size-3" />
+          Resource
+        </Button>
+      }
+      footer={
+        archivedResources.length > 0 ? (
+          <ArchivedList workspaceId={workspaceId} resources={archivedResources} />
+        ) : null
+      }
       rail={wide}
       data={data}
       indexed={indexed}
@@ -244,6 +258,12 @@ function MapWorkspace({
 
   return (
     <div ref={containerRef} className="h-full min-h-0">
+      <AddResourceDialog
+        open={adding}
+        onOpenChange={setAdding}
+        workspaceId={workspaceId}
+        onCreated={(id) => select(id)}
+      />
       {wide ? (
         <div className="flex h-full min-h-0">
           {panel}
@@ -285,6 +305,41 @@ function MapWorkspace({
         </div>
       )}
     </div>
+  );
+}
+
+function ArchivedList({
+  workspaceId,
+  resources,
+}: {
+  workspaceId: string;
+  resources: WorkspaceMap["resources"];
+}) {
+  const restore = useActionMutation("set-resource-archived", {
+    onSuccess: (result) => toast.success(`Restored ${result.name}.`),
+    onError: (error) => toast.error(actionErrorMessage(error) ?? "The resource was not restored."),
+  });
+  return (
+    <details className="border-t border-border px-4 py-3 text-xs">
+      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+        Archived · {resources.length}
+      </summary>
+      <ul className="mt-2 flex flex-col gap-1">
+        {resources.map((resource) => (
+          <li key={resource.id} className="flex items-center justify-between gap-2">
+            <span className="truncate text-foreground/80">{resource.name}</span>
+            <Button
+              variant="ghost"
+              size="xs"
+              disabled={restore.isPending}
+              onClick={() => restore.mutate({ workspaceId, resourceId: resource.id, archived: false })}
+            >
+              Restore
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

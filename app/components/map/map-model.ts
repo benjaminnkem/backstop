@@ -43,7 +43,12 @@ export const key = (resourceId: string, capability: Capability) =>
 
 /** Capabilities per resource with their routes and prerequisite names. */
 export function indexMap(data: WorkspaceMap) {
-  const names = new Map(data.resources.map((item) => [item.id, item.name]));
+  const names = new Map(
+    data.resources.map((item) => [
+      item.id,
+      item.status === "archived" ? `${item.name} (archived)` : item.name,
+    ]),
+  );
   const linksByGroup = new Map<string, MapLink[]>();
   for (const link of data.links) {
     const list = linksByGroup.get(link.groupId) ?? [];

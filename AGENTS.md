@@ -49,6 +49,8 @@ Status is per capability. `blocked` means every recorded route is blocked. A rec
 | `create-resource` | Add a resource. Then `create-capability`. |
 | `create-capability` | Record access, recovery, or administration. |
 | `add-dependency-route` | Add one route on a dependent capability. |
+| `remove-dependency-route` | Remove one route when the user asks. |
+| `set-resource-archived` | Archive or restore. Routes needing an archived resource evaluate as unknown. |
 | `run-simulation` | Persist a new run. Accepts ids or slugs. |
 | `get-simulation` | Read one saved run, or the latest. |
 | `list-remediation-tasks` | Read internal tasks. They do not change the map. |

@@ -136,7 +136,12 @@ export function buildRunbook(input: {
   const tests = input.tests ?? [];
   const latestTest = latestTestByCapability(tests);
   if (!map.workspace) throw new Error("A runbook needs a workspace.");
-  const names = new Map(map.resources.map((item) => [item.id, item.name]));
+  const names = new Map(
+    map.resources.map((item) => [
+      item.id,
+      item.status === "archived" ? `${item.name} (archived)` : item.name,
+    ]),
+  );
   const status = new Map(
     (simulation?.impacts ?? []).map((item) => [`${item.resourceId}/${item.capability}`, item.status]),
   );

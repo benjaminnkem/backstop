@@ -4,7 +4,7 @@ import {
   assertAccess,
   ForbiddenError,
 } from "@agent-native/core/sharing";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 
 import type {
   Capability,
@@ -19,6 +19,7 @@ import {
   recoveryDependencyGroups,
   recoveryDependencyLinks,
   recoveryResources,
+  recoveryTests,
   recoveryWorkspaceShares,
   recoveryWorkspaces,
 } from "../db/schema.js";
@@ -305,6 +306,102 @@ export async function addDependencyRoute(
     linkSlug,
     label,
   };
+}
+
+/**
+ * Archive or restore a resource. Archived resources leave future runs; a route
+ * that still needs one evaluates as unknown. Saved runs are not rewritten.
+ */
+export async function setResourceArchived(input: {
+  workspaceId?: string | undefined;
+  resourceId: string;
+  archived: boolean;
+}) {
+  const workspace = await resolveWorkspace(input.workspaceId);
+  const db = getDb();
+  return db.transaction(async (tx) => {
+    await lockWorkspace(tx, workspace.id);
+    const resource = await resourceInWorkspace(tx, workspace.id, input.resourceId);
+    if (!resource) throw new GraphEditInputError("That resource is not on this map.");
+    const next = input.archived ? "archived" : "active";
+    if (resource.status !== next) {
+      await tx
+        .update(recoveryResources)
+        .set({ status: next, updatedAt: new Date().toISOString() })
+        .where(eq(recoveryResources.id, resource.id));
+    }
+    const dependents = await tx
+      .select({ groupId: recoveryDependencyLinks.groupId })
+      .from(recoveryDependencyLinks)
+      .where(
+        and(
+          eq(recoveryDependencyLinks.workspaceId, workspace.id),
+          eq(recoveryDependencyLinks.prerequisiteResourceId, resource.id),
+        ),
+      );
+    const [saved] = await tx
+      .select({ status: recoveryResources.status, name: recoveryResources.name })
+      .from(recoveryResources)
+      .where(eq(recoveryResources.id, resource.id))
+      .limit(1);
+    if (!saved || saved.status !== next) throw new Error("The resource status did not save.");
+    return {
+      id: resource.id,
+      workspaceId: workspace.id,
+      name: saved.name,
+      archived: input.archived,
+      dependentRoutes: new Set(dependents.map((item) => item.groupId)).size,
+    };
+  });
+}
+
+/** Remove one route (a dependency group and its links). Saved runs are not rewritten. */
+export async function removeDependencyRoute(input: {
+  workspaceId?: string | undefined;
+  groupId: string;
+}) {
+  const workspace = await resolveWorkspace(input.workspaceId);
+  const db = getDb();
+  return db.transaction(async (tx) => {
+    await lockWorkspace(tx, workspace.id);
+    const [group] = await tx
+      .select({
+        id: recoveryDependencyGroups.id,
+        label: recoveryDependencyGroups.label,
+        resourceId: recoveryDependencyGroups.resourceId,
+      })
+      .from(recoveryDependencyGroups)
+      .where(
+        and(
+          eq(recoveryDependencyGroups.workspaceId, workspace.id),
+          or(
+            eq(recoveryDependencyGroups.id, input.groupId),
+            eq(recoveryDependencyGroups.slug, input.groupId),
+          ),
+        ),
+      )
+      .limit(1);
+    if (!group) throw new GraphEditInputError("That route is not on this map.");
+    // A test of this route stays on record; it just no longer names the route.
+    await tx
+      .update(recoveryTests)
+      .set({ groupId: null })
+      .where(inArray(recoveryTests.groupId, [group.id]));
+    await tx.delete(recoveryDependencyLinks).where(eq(recoveryDependencyLinks.groupId, group.id));
+    await tx.delete(recoveryDependencyGroups).where(eq(recoveryDependencyGroups.id, group.id));
+    const [left] = await tx
+      .select({ id: recoveryDependencyGroups.id })
+      .from(recoveryDependencyGroups)
+      .where(eq(recoveryDependencyGroups.id, group.id))
+      .limit(1);
+    if (left) throw new Error("The route was not removed.");
+    return {
+      id: group.id,
+      workspaceId: workspace.id,
+      resourceId: group.resourceId,
+      label: group.label,
+    };
+  });
 }
 
 export function graphEditFailure(error: unknown): {
