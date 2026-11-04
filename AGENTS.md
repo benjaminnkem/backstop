@@ -40,6 +40,8 @@ One Northstar sample per team (`org:<id>` or `user:<email>`). `seed-northstar` i
 
 Screens: `/home` is the Overview (`home`), `/map` the graph workspace (`map`), `/remediation` the task table (`remediation`), `/runbook` the emergency runbook (`runbook`). The `workspace`, `resource`, and `simulation` params are those ids; `/map` also takes `capability` to focus one causal path, and `/remediation` takes `task`. Scenario presets live in `shared/scenarios.ts` and only appear when their resource exists. Map UI uses `bs-*` tokens in `app/global.css`; do not hardcode colours.
 
+Isolation: `pnpm check:isolation` runs two synthetic users through every action; all of the second user's attempts on the first's workspace must be refused.
+
 Status is per capability. `blocked` means every recorded route is blocked. A recovery cycle warns and is not a lockout. Saved runs stay when the map changes. Ask what caused this sends the visible run id. Call `get-simulation` before explaining.
 
 | Action | Purpose |
