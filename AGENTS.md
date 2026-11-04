@@ -48,6 +48,7 @@ Status is per capability. `blocked` means every recorded route is blocked. A rec
 | --- | --- |
 | `get-workspace-map` | Read one workspace graph. |
 | `seed-northstar` | Import Northstar Studio once. |
+| `reset-northstar` | Reset the fictional sample (`confirm: true`). Only when the user asks. |
 | `create-resource` | Add a resource. Then `create-capability`. |
 | `create-capability` | Record access, recovery, or administration. |
 | `add-dependency-route` | Add one route on a dependent capability. |

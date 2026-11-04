@@ -5,7 +5,7 @@ import {
   useActionQuery,
 } from "@agent-native/core/client/hooks";
 import { IconArrowRight } from "@tabler/icons-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -138,6 +138,7 @@ export default function OverviewRoute() {
               fictional sample
             </span>
           ) : null}
+          {ws.fictional ? <ResetSample /> : null}
         </h1>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={askToMapResource}>
@@ -342,6 +343,44 @@ function formatStamp(iso: string) {
   if (Number.isNaN(date.getTime())) return iso;
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function ResetSample() {
+  const [confirming, setConfirming] = useState(false);
+  const reset = useActionMutation("reset-northstar", {
+    onSuccess: () => {
+      setConfirming(false);
+      toast.success("The sample team is back to its imported state.");
+    },
+    onError: (error) => toast.error(actionErrorMessage(error) ?? "The sample was not reset."),
+  });
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        className="ms-3 align-middle text-xs font-normal text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        onClick={() => setConfirming(true)}
+      >
+        reset
+      </button>
+    );
+  }
+  return (
+    <span className="ms-3 inline-flex items-center gap-2 align-middle text-xs font-normal">
+      <span className="text-muted-foreground">Delete its runs, tasks, tests and edits?</span>
+      <button
+        type="button"
+        disabled={reset.isPending}
+        className="font-medium text-status-blocked hover:underline"
+        onClick={() => reset.mutate({ confirm: true })}
+      >
+        {reset.isPending ? "Resetting…" : "Reset"}
+      </button>
+      <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setConfirming(false)}>
+        Cancel
+      </button>
+    </span>
+  );
 }
 
 function askToMapResource() {

@@ -11,7 +11,11 @@ import {
   recoveryCapabilities,
   recoveryDependencyGroups,
   recoveryDependencyLinks,
+  recoveryRemediationTasks,
   recoveryResources,
+  recoverySimulationImpacts,
+  recoverySimulationRuns,
+  recoveryTests,
   recoveryWorkspaceShares,
   recoveryWorkspaces,
 } from "../db/schema.js";
@@ -45,12 +49,6 @@ export async function seedNorthstar(actor: Actor) {
   const now = new Date().toISOString();
   const tenantKey = tenantKeyFor(actor);
   const workspaceId = crypto.randomUUID();
-  const resourceIds = new Map(
-    fixture.resources.map((resource) => [resource.id, crypto.randomUUID()]),
-  );
-  const groupIds = new Map(
-    fixture.groups.map((group) => [group.id, crypto.randomUUID()]),
-  );
 
   try {
     await db.transaction(async (tx) => {
@@ -66,75 +64,7 @@ export async function seedNorthstar(actor: Actor) {
         createdAt: now,
         updatedAt: now,
       });
-      await tx.insert(recoveryResources).values(
-        fixture.resources.map((resource) => ({
-          id: resourceIds.get(resource.id)!,
-          workspaceId,
-          slug: resource.id,
-          name: resource.name,
-          kind: resource.kind,
-          criticality: resource.criticality,
-          ownerLabel: resource.owner ?? null,
-          description: null,
-          status: "active" as const,
-          ownerEmail: actor.userEmail,
-          orgId: actor.orgId,
-          createdAt: now,
-          updatedAt: now,
-        })),
-      );
-      if (fixture.capabilities.length > 0) {
-        await tx.insert(recoveryCapabilities).values(
-          fixture.capabilities.map((capability) => ({
-            id: crypto.randomUUID(),
-            workspaceId,
-            resourceId: resourceIds.get(capability.resourceId)!,
-            capability: capability.capability,
-            mode: capability.mode,
-            confidence: capability.confidence,
-            notes: null,
-            ownerEmail: actor.userEmail,
-            orgId: actor.orgId,
-            updatedAt: now,
-          })),
-        );
-      }
-      if (fixture.groups.length > 0) {
-        await tx.insert(recoveryDependencyGroups).values(
-          fixture.groups.map((group) => ({
-            id: groupIds.get(group.id)!,
-            workspaceId,
-            resourceId: resourceIds.get(group.resourceId)!,
-            slug: group.id,
-            capability: group.capability,
-            requirementMode: group.requirementMode,
-            label: group.label,
-            ownerEmail: actor.userEmail,
-            orgId: actor.orgId,
-            createdAt: now,
-          })),
-        );
-      }
-      if (fixture.links.length > 0) {
-        await tx.insert(recoveryDependencyLinks).values(
-          fixture.links.map((link) => ({
-            id: crypto.randomUUID(),
-            workspaceId,
-            groupId: groupIds.get(link.groupId)!,
-            slug: link.id,
-            prerequisiteResourceId: resourceIds.get(
-              link.prerequisiteResourceId,
-            )!,
-            prerequisiteCapability: link.prerequisiteCapability,
-            confidence: link.confidence,
-            notes: null,
-            lastVerifiedAt: null,
-            ownerEmail: actor.userEmail,
-            orgId: actor.orgId,
-            createdAt: now,
-          })),
-        );
-      }
+      await insertFixtureGraph(tx, actor, workspaceId, now);
     });
   } catch (error) {
     if (!isUniqueViolation(error)) throw error;
@@ -269,6 +199,135 @@ export async function readWorkspaceMap(workspaceId?: string) {
     disclaimer: SAMPLE_DISCLAIMER,
   });
 }
+
+
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+/** Insert the fictional Northstar graph into an existing workspace row. */
+async function insertFixtureGraph(tx: Tx, actor: Actor, workspaceId: string, now: string) {
+  const fixture = loadNorthstarFixture();
+  const resourceIds = new Map(
+    fixture.resources.map((resource) => [resource.id, crypto.randomUUID()]),
+  );
+  const groupIds = new Map(
+    fixture.groups.map((group) => [group.id, crypto.randomUUID()]),
+  );
+  await tx.insert(recoveryResources).values(
+    fixture.resources.map((resource) => ({
+      id: resourceIds.get(resource.id)!,
+      workspaceId,
+      slug: resource.id,
+      name: resource.name,
+      kind: resource.kind,
+      criticality: resource.criticality,
+      ownerLabel: resource.owner ?? null,
+      description: null,
+      status: "active" as const,
+      ownerEmail: actor.userEmail,
+      orgId: actor.orgId,
+      createdAt: now,
+      updatedAt: now,
+    })),
+  );
+  if (fixture.capabilities.length > 0) {
+    await tx.insert(recoveryCapabilities).values(
+      fixture.capabilities.map((capability) => ({
+        id: crypto.randomUUID(),
+        workspaceId,
+        resourceId: resourceIds.get(capability.resourceId)!,
+        capability: capability.capability,
+        mode: capability.mode,
+        confidence: capability.confidence,
+        notes: null,
+        ownerEmail: actor.userEmail,
+        orgId: actor.orgId,
+        updatedAt: now,
+      })),
+    );
+  }
+  if (fixture.groups.length > 0) {
+    await tx.insert(recoveryDependencyGroups).values(
+      fixture.groups.map((group) => ({
+        id: groupIds.get(group.id)!,
+        workspaceId,
+        resourceId: resourceIds.get(group.resourceId)!,
+        slug: group.id,
+        capability: group.capability,
+        requirementMode: group.requirementMode,
+        label: group.label,
+        ownerEmail: actor.userEmail,
+        orgId: actor.orgId,
+        createdAt: now,
+      })),
+    );
+  }
+  if (fixture.links.length > 0) {
+    await tx.insert(recoveryDependencyLinks).values(
+      fixture.links.map((link) => ({
+        id: crypto.randomUUID(),
+        workspaceId,
+        groupId: groupIds.get(link.groupId)!,
+        slug: link.id,
+        prerequisiteResourceId: resourceIds.get(
+          link.prerequisiteResourceId,
+        )!,
+        prerequisiteCapability: link.prerequisiteCapability,
+        confidence: link.confidence,
+        notes: null,
+        lastVerifiedAt: null,
+        ownerEmail: actor.userEmail,
+        orgId: actor.orgId,
+        createdAt: now,
+      })),
+    );
+  }
+}
+
+/**
+ * Put the fictional sample back to its imported state: delete its runs, tasks,
+ * tests, and edits, then import the fixture again into the same workspace, so
+ * links and sharing keep working. Refuses any workspace that is not the sample.
+ */
+export async function resetNorthstar(actor: Actor) {
+  const existing = await findSeed(actor);
+  if (!existing) {
+    throw new NorthstarResetError("There is no sample team to reset. Import it first.");
+  }
+  await assertAccess("recovery-workspace", existing.id, "editor");
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({ id: recoveryWorkspaces.id, fictional: recoveryWorkspaces.fictional, seedKey: recoveryWorkspaces.seedKey })
+      .from(recoveryWorkspaces)
+      .where(
+        and(
+          eq(recoveryWorkspaces.id, existing.id),
+          accessFilter(recoveryWorkspaces, recoveryWorkspaceShares),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!locked || !locked.fictional || locked.seedKey !== NORTHSTAR_SEED) {
+      throw new NorthstarResetError("Only the fictional sample team can be reset.");
+    }
+    const id = existing.id;
+    // Children before parents, so every foreign key is satisfied.
+    await tx.delete(recoveryTests).where(eq(recoveryTests.workspaceId, id));
+    await tx.delete(recoveryRemediationTasks).where(eq(recoveryRemediationTasks.workspaceId, id));
+    await tx.delete(recoverySimulationImpacts).where(eq(recoverySimulationImpacts.workspaceId, id));
+    await tx.delete(recoverySimulationRuns).where(eq(recoverySimulationRuns.workspaceId, id));
+    await tx.delete(recoveryDependencyLinks).where(eq(recoveryDependencyLinks.workspaceId, id));
+    await tx.delete(recoveryDependencyGroups).where(eq(recoveryDependencyGroups.workspaceId, id));
+    await tx.delete(recoveryCapabilities).where(eq(recoveryCapabilities.workspaceId, id));
+    await tx.delete(recoveryResources).where(eq(recoveryResources.workspaceId, id));
+    await insertFixtureGraph(tx, actor, id, now);
+    await tx.update(recoveryWorkspaces).set({ updatedAt: now }).where(eq(recoveryWorkspaces.id, id));
+  });
+  return { id: existing.id, name: existing.name, ...(await countsFor(existing.id)) };
+}
+
+export class NorthstarResetError extends Error {}
 
 async function findSeed(actor: Actor) {
   const db = getDb();
