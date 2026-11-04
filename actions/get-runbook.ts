@@ -4,11 +4,17 @@ import { ForbiddenError } from "@agent-native/core/sharing";
 import { z } from "zod";
 
 import { buildRunbook, runbookSchema } from "../shared/runbook.js";
+import { listRecoveryTests, recoveryTestFailure } from "../server/domain/recovery-tests.js";
 import { listRemediationTasks, remediationFailure } from "../server/domain/remediation.js";
 import { readSimulation, SimulationAccessError } from "../server/domain/simulation-run.js";
 import { readWorkspaceMap } from "../server/domain/workspace-map.js";
 
-const errors = defineActionErrors("UNAUTHENTICATED", "FORBIDDEN", "VALIDATION_ERROR");
+const errors = defineActionErrors(
+  "UNAUTHENTICATED",
+  "FORBIDDEN",
+  "VALIDATION_ERROR",
+  "CONFIRMATION_REQUIRED",
+);
 
 export default defineAction({
   description:
@@ -57,14 +63,15 @@ export default defineAction({
       // A run id from another workspace is ignored rather than mixed in.
       const simulation = chosen && chosen.workspaceId === id ? chosen : null;
       const { tasks } = await listRemediationTasks({ workspaceId: id });
-      return buildRunbook({ map, simulation, tasks, now: new Date() });
+      const { tests } = await listRecoveryTests({ workspaceId: id });
+      return buildRunbook({ map, simulation, tasks, tests, now: new Date() });
     } catch (error) {
       if (error instanceof SimulationAccessError || error instanceof ForbiddenError) {
         errors.noWrite("That recovery workspace is not available.", "FORBIDDEN", {
           statusCode: 403,
         });
       }
-      const failure = remediationFailure(error);
+      const failure = remediationFailure(error) ?? recoveryTestFailure(error);
       if (failure) {
         errors.noWrite(failure.message, failure.code, { statusCode: failure.statusCode });
       }

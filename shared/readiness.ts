@@ -1,4 +1,5 @@
 import type { Capability, WorkspaceMap } from "./recovery.js";
+import type { RecoveryTest } from "./recovery-tests.js";
 import type { SimulationRecord } from "./simulation-contract.js";
 
 type Status = SimulationRecord["impacts"][number]["status"];
@@ -34,12 +35,15 @@ export interface LedgerRow {
   recoveryWays: number | null;
   recoveryMode: "independent" | "dependent" | "unknown" | "missing";
   worst: { status: Status; capability: Capability } | null;
+  /** Most recent person-recorded result on any of this system's capabilities. */
+  tested: { outcome: "passed" | "failed"; testedOn: string | null } | null;
 }
 
 /** One row per active resource: how many ways in, through what, and the last result. */
 export function buildLedger(
   map: WorkspaceMap,
   simulation: SimulationRecord | null,
+  tests: RecoveryTest[] = [],
 ): LedgerRow[] {
   const names = new Map(map.resources.map((item) => [item.id, item.name]));
   const links = new Map<string, WorkspaceMap["links"]>();
@@ -94,6 +98,7 @@ export function buildLedger(
         recoveryWays: recovery.ways,
         recoveryMode: recovery.mode,
         worst: own[0] ? { status: own[0].status, capability: own[0].capability } : null,
+        tested: latestResult(tests, resource.id),
       };
     })
     .sort(
@@ -103,6 +108,15 @@ export function buildLedger(
         Number(a.accessMode !== "dependent") - Number(b.accessMode !== "dependent") ||
         a.name.localeCompare(b.name),
     );
+}
+
+function latestResult(tests: RecoveryTest[], resourceId: string): LedgerRow["tested"] {
+  const results = tests
+    .filter((test) => test.resourceId === resourceId && test.outcome !== "planned")
+    .sort((a, b) => (b.testedOn ?? b.createdAt).localeCompare(a.testedOn ?? a.createdAt));
+  const first = results[0];
+  if (!first || first.outcome === "planned") return null;
+  return { outcome: first.outcome, testedOn: first.testedOn };
 }
 
 /** Plain sentences that restate a saved run. No inference beyond the stored result. */

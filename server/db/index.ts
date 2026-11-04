@@ -36,4 +36,12 @@ registerIdentityColumns([
     reason:
       "Historical attribution for who recorded a remediation task. The address is not an access grant.",
   },
+  {
+    table: "recovery_tests",
+    column: "created_by",
+    emailChange: "retain",
+    offboard: "retain",
+    reason:
+      "Historical attribution for who recorded a recovery test. The address is not an access grant.",
+  },
 ]);

@@ -30,6 +30,7 @@ import {
   type IndexedCapability,
   type MapResource,
 } from "./map-model";
+import { RecoveryTestsPanel } from "./recovery-tests-panel";
 import { ConfidenceTag, StatusBadge } from "./status";
 
 export function Inspector({
@@ -114,6 +115,12 @@ export function Inspector({
           capabilities={capabilities}
           resources={resources}
           indexed={indexed}
+        />
+
+        <RecoveryTestsPanel
+          workspaceId={workspaceId}
+          resource={resource}
+          capabilities={capabilities}
         />
 
         <section className="px-4 py-4">

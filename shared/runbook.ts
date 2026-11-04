@@ -10,6 +10,7 @@ import {
   type WorkspaceMap,
 } from "./recovery.js";
 import type { RemediationTask } from "./remediation.js";
+import { latestTestByCapability, type RecoveryTest } from "./recovery-tests.js";
 import {
   simulationStatusSchema,
   type SimulationRecord,
@@ -47,6 +48,14 @@ export const runbookSchema = z.object({
             }),
           ),
           note: z.string().nullable(),
+          test: z
+            .object({
+              outcome: z.enum(["planned", "passed", "failed"]),
+              testedOn: z.string().nullable(),
+              method: z.string(),
+              tester: z.string().nullable(),
+            })
+            .nullable(),
         }),
       ),
     }),
@@ -80,6 +89,19 @@ export const runbookSchema = z.object({
     }),
   ),
   testing: z.string(),
+  testHistory: z.array(
+    z.object({
+      id: z.string(),
+      resource: z.string(),
+      capability: capabilitySchema,
+      route: z.string().nullable(),
+      outcome: z.enum(["planned", "passed", "failed"]),
+      testedOn: z.string().nullable(),
+      method: z.string(),
+      tester: z.string().nullable(),
+      evidence: z.string().nullable(),
+    }),
+  ),
   disclaimer: z.string(),
   markdown: z.string(),
 });
@@ -107,9 +129,12 @@ export function buildRunbook(input: {
   map: WorkspaceMap;
   simulation: SimulationRecord | null;
   tasks: RemediationTask[];
+  tests?: RecoveryTest[];
   now: Date;
 }): Runbook {
   const { map, simulation, tasks, now } = input;
+  const tests = input.tests ?? [];
+  const latestTest = latestTestByCapability(tests);
   if (!map.workspace) throw new Error("A runbook needs a workspace.");
   const names = new Map(map.resources.map((item) => [item.id, item.name]));
   const status = new Map(
@@ -172,6 +197,7 @@ export function buildRunbook(input: {
             text: `${label}: ${capability.confidence !== "verified" ? `capability is ${capability.confidence}` : `${unverified.length} prerequisite${unverified.length === 1 ? " is" : "s are"} not verified`}.`,
           });
         }
+        const test = latestTest.get(`${resource.id}/${capability.capability}`);
         return {
           capability: capability.capability,
           mode: capability.mode,
@@ -179,6 +205,14 @@ export function buildRunbook(input: {
           status: status.get(`${resource.id}/${capability.capability}`) ?? null,
           routes,
           note,
+          test: test
+            ? {
+                outcome: test.outcome,
+                testedOn: test.testedOn,
+                method: test.method,
+                tester: test.testerLabel,
+              }
+            : null,
         };
       });
     if (capabilities.length === 0) {
@@ -234,10 +268,34 @@ export function buildRunbook(input: {
     gaps,
     simulation: runbookSimulation,
     tasks: openTasks,
-    testing: TESTING_NOT_RECORDED,
+    testing: testingSummary(systems, tests),
+    testHistory: [...tests]
+      .sort((a, b) => (b.testedOn ?? b.createdAt).localeCompare(a.testedOn ?? a.createdAt))
+      .map((test) => ({
+        id: test.id,
+        resource: test.resourceName,
+        capability: test.capability,
+        route: test.routeLabel,
+        outcome: test.outcome,
+        testedOn: test.testedOn,
+        method: test.method,
+        tester: test.testerLabel,
+        evidence: test.evidenceNotes,
+      })),
     disclaimer: map.disclaimer,
   };
   return { ...base, markdown: renderMarkdown(base) };
+}
+
+function testingSummary(systems: Runbook["systems"], tests: RecoveryTest[]): string {
+  if (tests.length === 0) return TESTING_NOT_RECORDED;
+  const capabilities = systems.flatMap((system) => system.capabilities);
+  const latest = capabilities.map((capability) => capability.test?.outcome ?? null);
+  const passed = latest.filter((item) => item === "passed").length;
+  const failed = latest.filter((item) => item === "failed").length;
+  const planned = latest.filter((item) => item === "planned").length;
+  const untested = latest.filter((item) => item === null || item === "planned").length;
+  return `Latest results: ${passed} passed, ${failed} failed, ${planned} planned. ${untested} of ${capabilities.length} capabilities are documented, not tested. Results were recorded by people; the model does not verify them.`;
 }
 
 function renderMarkdown(book: Omit<Runbook, "markdown">): string {
@@ -265,6 +323,11 @@ function renderMarkdown(book: Omit<Runbook, "markdown">): string {
         lines.push(`${index === 0 ? "-" : "- or"} ${route.label}: needs ${needs || "no prerequisite recorded"}`);
       });
       if (capability.note) lines.push(`- ⚠ ${capability.note}`);
+      lines.push(
+        capability.test
+          ? `- Test: ${capability.test.outcome}${capability.test.testedOn ? ` on ${capability.test.testedOn}` : ""} — ${capability.test.method}${capability.test.tester ? ` (${capability.test.tester})` : ""}`
+          : "- Test: documented, not tested",
+      );
     }
     lines.push("");
   }
@@ -295,7 +358,13 @@ function renderMarkdown(book: Omit<Runbook, "markdown">): string {
       .join(" · ");
     lines.push(`- ${task.title} (${meta})${task.reason ? ` — ${task.reason}` : ""}`);
   }
-  lines.push("", "## Testing history", "", book.testing, "", "---", "", book.disclaimer);
+  lines.push("", "## Testing history", "", book.testing, "");
+  for (const test of book.testHistory) {
+    lines.push(
+      `- ${test.testedOn ?? "not yet"} · ${test.outcome} · ${test.resource} ${test.capability}${test.route ? ` (${test.route})` : ""} — ${test.method}${test.tester ? ` · ${test.tester}` : ""}${test.evidence ? ` · ${test.evidence}` : ""}`,
+    );
+  }
+  lines.push("", "---", "", book.disclaimer);
   lines.push("A simulation does not prove a real account can be recovered. This runbook contains no credentials.");
   return `${lines.join("\n")}\n`;
 }

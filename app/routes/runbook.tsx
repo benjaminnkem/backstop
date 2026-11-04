@@ -98,7 +98,11 @@ function RunbookDocument({ book }: { book: Runbook }) {
             : "none"}
         </dd>
         <dt className="text-muted-foreground">Testing</dt>
-        <dd className="text-status-at-risk">documented, not tested — no recovery test results recorded</dd>
+        <dd className={book.testHistory.length === 0 ? "text-status-at-risk" : undefined}>
+          {book.testHistory.length === 0
+            ? "documented, not tested — no recovery test results recorded"
+            : testingLine(book)}
+        </dd>
       </dl>
 
       <Section number="1" title="Systems and ways in">
@@ -214,6 +218,28 @@ function RunbookDocument({ book }: { book: Runbook }) {
 
       <Section number="5" title="Testing history">
         <p className="text-sm text-muted-foreground">{book.testing}</p>
+        {book.testHistory.length > 0 ? (
+          <ul className="mt-3 border-t border-border text-sm">
+            {book.testHistory.map((test) => (
+              <li
+                key={test.id}
+                className="grid break-inside-avoid grid-cols-[6.5rem_4rem_1fr] items-baseline gap-4 border-b border-border py-2"
+              >
+                <span className="font-mono text-xs text-muted-foreground">{test.testedOn ?? "not yet"}</span>
+                <span className={cn("font-mono text-xs", OUTCOME_TONE[test.outcome])}>{test.outcome}</span>
+                <span>
+                  {test.resource} {test.capability}
+                  {test.route ? <span className="text-muted-foreground"> · {test.route}</span> : null}
+                  <span className="block text-xs text-muted-foreground">
+                    {test.method}
+                    {test.tester ? ` · ${test.tester}` : ""}
+                    {test.evidence ? ` · ${test.evidence}` : ""}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </Section>
 
       <footer className="mt-12 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
@@ -331,8 +357,29 @@ function CapabilityBlock({ capability }: { capability: CapabilityEntry }) {
       {capability.note ? (
         <p className="mt-1 ps-6 font-mono text-[11px] text-status-at-risk">↳ {noteText(capability.note)}</p>
       ) : null}
+      <p className={cn("mt-1 ps-6 font-mono text-[11px]", capability.test ? OUTCOME_TONE[capability.test.outcome] : "text-muted-foreground")}>
+        {capability.test
+          ? capability.test.outcome === "planned"
+            ? `test planned — ${capability.test.method}`
+            : `tested ${capability.test.outcome} ${capability.test.testedOn ?? ""}${capability.test.tester ? ` · ${capability.test.tester}` : ""}`
+          : "not tested"}
+      </p>
     </div>
   );
+}
+
+const OUTCOME_TONE = {
+  planned: "text-muted-foreground",
+  passed: "text-status-available",
+  failed: "text-status-blocked",
+} as const;
+
+function testingLine(book: Runbook) {
+  const latest = book.systems.flatMap((system) => system.capabilities).map((item) => item.test?.outcome);
+  const passed = latest.filter((item) => item === "passed").length;
+  const failed = latest.filter((item) => item === "failed").length;
+  const untested = latest.filter((item) => item !== "passed" && item !== "failed").length;
+  return `${passed} passed · ${failed} failed · ${untested} of ${latest.length} not tested`;
 }
 
 function noteText(note: string) {

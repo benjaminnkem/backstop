@@ -188,6 +188,35 @@ CREATE INDEX IF NOT EXISTS recovery_remediation_tasks_workspace_status
   ON recovery_remediation_tasks (workspace_id, status);
 `,
     },
+    {
+      version: 3,
+      name: "recovery_tests",
+      sql: `
+CREATE TABLE IF NOT EXISTS recovery_tests (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES recovery_workspaces (id),
+  resource_id TEXT NOT NULL REFERENCES recovery_resources (id),
+  capability TEXT NOT NULL,
+  group_id TEXT REFERENCES recovery_dependency_groups (id),
+  method TEXT NOT NULL,
+  tester_label TEXT,
+  tested_on TEXT,
+  outcome TEXT NOT NULL DEFAULT 'planned',
+  evidence_notes TEXT,
+  confirmed_by_human BOOLEAN NOT NULL DEFAULT false,
+  created_by TEXT NOT NULL,
+  owner_email TEXT NOT NULL,
+  org_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (${timestampDefault}),
+  updated_at TEXT NOT NULL DEFAULT (${timestampDefault}),
+  CONSTRAINT recovery_tests_capability CHECK (capability IN ('access', 'recovery', 'administration')),
+  CONSTRAINT recovery_tests_outcome CHECK (outcome IN ('planned', 'passed', 'failed')),
+  CONSTRAINT recovery_tests_result_confirmed CHECK (outcome = 'planned' OR confirmed_by_human = true)
+);
+CREATE INDEX IF NOT EXISTS recovery_tests_workspace_resource
+  ON recovery_tests (workspace_id, resource_id);
+`,
+    },
   ],
   { table: "backstop_migrations" },
 );

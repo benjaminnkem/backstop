@@ -320,3 +320,51 @@ export const recoveryRemediationTasks = pgTable(
     ),
   ],
 );
+
+/**
+ * A human-recorded recovery test for one capability (optionally one route).
+ * `passed` and `failed` need `confirmed_by_human`; the agent may only plan.
+ */
+export const recoveryTests = pgTable(
+  "recovery_tests",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => recoveryWorkspaces.id),
+    resourceId: text("resource_id")
+      .notNull()
+      .references(() => recoveryResources.id),
+    capability: text("capability").notNull(),
+    groupId: text("group_id").references(() => recoveryDependencyGroups.id),
+    method: text("method").notNull(),
+    testerLabel: text("tester_label"),
+    testedOn: text("tested_on"),
+    outcome: text("outcome").notNull().default("planned"),
+    evidenceNotes: text("evidence_notes"),
+    confirmedByHuman: boolean("confirmed_by_human").notNull().default(false),
+    createdBy: text("created_by").notNull(),
+    ownerEmail: text("owner_email").notNull(),
+    orgId: text("org_id"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [
+    index("recovery_tests_workspace_resource").on(
+      table.workspaceId,
+      table.resourceId,
+    ),
+    check(
+      "recovery_tests_capability",
+      sql`${table.capability} in ('access', 'recovery', 'administration')`,
+    ),
+    check(
+      "recovery_tests_outcome",
+      sql`${table.outcome} in ('planned', 'passed', 'failed')`,
+    ),
+    check(
+      "recovery_tests_result_confirmed",
+      sql`${table.outcome} = 'planned' or ${table.confirmedByHuman} = true`,
+    ),
+  ],
+);

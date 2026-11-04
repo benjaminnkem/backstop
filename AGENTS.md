@@ -55,4 +55,7 @@ Status is per capability. `blocked` means every recorded route is blocked. A rec
 | `create-remediation-task` | Record a task only when the user asks. |
 | `update-remediation-task` | Change status, priority, or label. |
 | `get-runbook` | Build the runbook from saved records, with Markdown. |
+| `list-recovery-tests` | Read tests. No record means documented, not tested. |
+| `record-recovery-test` | Agent may only plan (`planned`). Passed or failed needs a person in the UI. |
+| `update-recovery-test` | Agent may edit a planned test, never a result. |
 | `navigate` | Open `map` with workspace, resource, and simulation ids. |

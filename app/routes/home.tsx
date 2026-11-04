@@ -53,6 +53,11 @@ export default function OverviewRoute() {
     { ...(workspaceId ? { workspaceId } : {}) },
     { enabled: Boolean(workspaceId) },
   );
+  const tests = useActionQuery(
+    "list-recovery-tests",
+    { ...(workspaceId ? { workspaceId } : {}) },
+    { enabled: Boolean(workspaceId) },
+  );
   const seed = useActionMutation("seed-northstar", {
     onSuccess: (result) => navigate(`/map?workspace=${result.id}`),
     onError: (error) =>
@@ -62,8 +67,8 @@ export default function OverviewRoute() {
   const data = map.data;
   const simulation = latest.data?.simulation ?? null;
   const ledger = useMemo(
-    () => (data?.workspace ? buildLedger(data, simulation) : []),
-    [data, simulation],
+    () => (data?.workspace ? buildLedger(data, simulation, tests.data?.tests ?? []) : []),
+    [data, simulation, tests.data],
   );
   const summary = useMemo(
     () => (data?.workspace && simulation ? describeRun(data, simulation) : []),
@@ -190,6 +195,7 @@ export default function OverviewRoute() {
               <th className="py-2 pe-4 font-normal">Access</th>
               <th className="hidden py-2 pe-4 font-normal md:table-cell">Through</th>
               <th className="py-2 pe-4 font-normal">Recovery</th>
+              <th className="hidden py-2 pe-4 font-normal sm:table-cell">Tested</th>
               <th className="py-2 text-right font-normal">Last run</th>
             </tr>
           </thead>
@@ -273,6 +279,20 @@ function LedgerLine({ row, onOpen }: { row: LedgerRow; onOpen: () => void }) {
       </td>
       <td className="py-2.5 pe-4">
         <Ways mode={row.recoveryMode} count={row.recoveryWays} />
+      </td>
+      <td className="hidden py-2.5 pe-4 sm:table-cell">
+        {row.tested ? (
+          <span
+            className={cn(
+              "font-mono text-xs",
+              row.tested.outcome === "passed" ? "text-status-available" : "text-status-blocked",
+            )}
+          >
+            {row.tested.outcome} {row.tested.testedOn?.slice(5) ?? ""}
+          </span>
+        ) : (
+          <span className="font-mono text-xs text-muted-foreground/70">not tested</span>
+        )}
       </td>
       <td className="py-2.5 text-right">
         {row.worst ? (
