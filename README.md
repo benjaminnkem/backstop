@@ -6,7 +6,7 @@ BACKSTOP is a recovery-readiness simulator for small teams. You write down how y
 
 It is built on [Agent-Native](https://agent-native.com). The person and the AI agent work on the same saved map, through the same actions.
 
-> **Demo video:** _Clips link — add before submission_
+> **Demo video:** [Watch the 2½-minute walkthrough](https://drive.google.com/file/d/1hIoE2xSgLZ8Xy1_yxk9PcKybc_lpEs7h/view?usp=sharing) (music: Sascha Ende, ende.app, CC BY 4.0)<br>
 > **Built for:** Builder.io Agent-Native hackathon, October 27 – November 9, 2026
 
 ---
